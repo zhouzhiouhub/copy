@@ -16,7 +16,9 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
 const MAX_AGE = 48 * 60 * 60 * 1000
-const WINDOW_WIDTH = 620
+const PANEL_SIZE_RATIO = 1 / 3
+const MIN_PANEL_WIDTH = 420
+const MIN_PANEL_HEIGHT = 300
 const EDGE_PEEK = 6
 const EDGE_HIT = 12
 const WATCH_INTERVAL = 450
@@ -62,7 +64,7 @@ const VIDEO_EXTENSIONS = new Set([
 let mainWindow
 let entries = []
 let paused = false
-let dock = { side: 'right', pinned: false, expanded: true }
+let dock = { side: 'right', pinned: false, expanded: true, verticalRatio: 0.5 }
 let lastPollingSignature = ''
 let suppressCaptureUntil = 0
 let suppressExpandUntil = 0
@@ -72,6 +74,7 @@ let clipboardWatcher = null
 let pollTimer = null
 let edgeWatchTimer = null
 let collapseTimer = null
+let applyingDockBounds = false
 let isQuitting = false
 let pasteTarget = null
 let pendingPastePoint = null
@@ -90,6 +93,32 @@ protocol.registerSchemesAsPrivileged([
 ])
 
 const dataPath = () => path.join(app.getPath('userData'), 'clipboard-history.json')
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value))
+}
+
+function normalizeVerticalRatio(value) {
+  const ratio = Number(value)
+  return Number.isFinite(ratio) ? clamp(ratio, 0, 1) : 0.5
+}
+
+function panelSizeForWorkArea(workArea) {
+  const maxWidth = Math.max(EDGE_PEEK, workArea.width - EDGE_PEEK)
+  const maxHeight = Math.max(1, workArea.height)
+  const minWidth = Math.min(MIN_PANEL_WIDTH, maxWidth)
+  const minHeight = Math.min(MIN_PANEL_HEIGHT, maxHeight)
+
+  return {
+    width: Math.round(clamp(workArea.width * PANEL_SIZE_RATIO, minWidth, maxWidth)),
+    height: Math.round(clamp(workArea.height * PANEL_SIZE_RATIO, minHeight, maxHeight))
+  }
+}
+
+function dockYForWorkArea(workArea, height) {
+  const availableY = Math.max(0, workArea.height - height)
+  return Math.round(workArea.y + availableY * normalizeVerticalRatio(dock.verticalRatio))
+}
 
 function mediaUrlFor(filePath) {
   return `atlas-media://local/${Buffer.from(filePath, 'utf8').toString('base64url')}`
@@ -112,7 +141,8 @@ function readStore() {
     dock = {
       side: store.dock?.side === 'left' ? 'left' : 'right',
       pinned: Boolean(store.dock?.pinned),
-      expanded: Boolean(store.dock?.pinned)
+      expanded: Boolean(store.dock?.pinned),
+      verticalRatio: normalizeVerticalRatio(store.dock?.verticalRatio)
     }
   } catch {
     entries = []
@@ -178,14 +208,14 @@ function getDisplayWorkArea() {
 
 function dockBounds(expanded = dock.expanded) {
   const workArea = getDisplayWorkArea()
-  const height = workArea.height
-  const width = Math.min(WINDOW_WIDTH, Math.max(440, workArea.width - EDGE_PEEK))
+  const { width, height } = panelSizeForWorkArea(workArea)
+  const y = dockYForWorkArea(workArea, height)
   const shownX = dock.side === 'left' ? workArea.x : workArea.x + workArea.width - width
   const hiddenX = dock.side === 'left' ? workArea.x - width + EDGE_PEEK : workArea.x + workArea.width - EDGE_PEEK
 
   return {
     x: expanded ? shownX : hiddenX,
-    y: workArea.y,
+    y,
     width,
     height
   }
@@ -193,6 +223,7 @@ function dockBounds(expanded = dock.expanded) {
 
 function applyDockBounds(animated = true) {
   if (!mainWindow || mainWindow.isDestroyed()) return
+  applyingDockBounds = true
   mainWindow.setBounds(dockBounds(), animated)
   mainWindow.setAlwaysOnTop(true, 'floating')
   try {
@@ -200,6 +231,9 @@ function applyDockBounds(animated = true) {
   } catch {
     mainWindow.setIgnoreMouseEvents(!dock.expanded)
   }
+  setTimeout(() => {
+    applyingDockBounds = false
+  }, 250)
 }
 
 function hideAfterCopy() {
@@ -327,8 +361,11 @@ async function hideAndPaste() {
 }
 
 function cursorEdgeSide(point, display) {
-  const { x, y, width, height } = display.bounds
-  if (point.y < y || point.y > y + height) return null
+  const { height } = panelSizeForWorkArea(display.workArea)
+  const triggerY = dockYForWorkArea(display.workArea, height)
+  if (point.y < triggerY || point.y > triggerY + height) return null
+
+  const { x, width } = display.bounds
   if (point.x <= x + EDGE_HIT) return 'left'
   if (point.x >= x + width - EDGE_HIT) return 'right'
   return null
@@ -389,6 +426,33 @@ function tickEdgeWatch() {
 function startEdgeWatcher() {
   if (edgeWatchTimer) return
   edgeWatchTimer = setInterval(tickEdgeWatch, EDGE_WATCH_INTERVAL)
+}
+
+function saveWindowDockPosition() {
+  if (applyingDockBounds || !mainWindow || mainWindow.isDestroyed()) return
+
+  const bounds = mainWindow.getBounds()
+  const display = screen.getDisplayMatching(bounds)
+  const workArea = display.workArea
+  const availableY = Math.max(1, workArea.height - bounds.height)
+  const verticalRatio = normalizeVerticalRatio((bounds.y - workArea.y) / availableY)
+  const leftDistance = Math.abs(bounds.x - workArea.x)
+  const rightDistance = Math.abs(workArea.x + workArea.width - (bounds.x + bounds.width))
+  const side = leftDistance <= rightDistance ? 'left' : 'right'
+
+  if (side === dock.side && Math.abs(verticalRatio - normalizeVerticalRatio(dock.verticalRatio)) < 0.01) {
+    applyDockBounds(false)
+    return
+  }
+
+  dock = {
+    ...dock,
+    side,
+    verticalRatio
+  }
+  writeStore()
+  notifyDockChanged()
+  applyDockBounds(false)
 }
 
 function setDockExpanded(expanded, force = false) {
@@ -931,6 +995,8 @@ function createWindow() {
     if (!dock.pinned) setDockExpanded(false)
   })
 
+  mainWindow.on('moved', saveWindowDockPosition)
+
   mainWindow.on('close', (event) => {
     if (isQuitting) return
     event.preventDefault()
@@ -958,6 +1024,8 @@ app.whenReady().then(() => {
     notifyHistoryChanged()
   }, 60 * 60 * 1000)
 })
+
+screen.on('display-metrics-changed', () => applyDockBounds(false))
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
