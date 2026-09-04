@@ -259,6 +259,13 @@ function osFormatName(type) {
   return match ? match[1] : type
 }
 
+function hasFileFormatHint(formats) {
+  return formats.some((type) => {
+    const lowerFormat = osFormatName(type).toLowerCase()
+    return lowerFormat.includes('filename') || lowerFormat.includes('hdrop') || lowerFormat.includes('filedrop') || type === 'text/uri-list'
+  })
+}
+
 async function maybeAwait(value) {
   return value && typeof value.then === 'function' ? value : Promise.resolve(value)
 }
@@ -375,7 +382,7 @@ async function readClipboardSnapshot() {
 
   snapshot.files = uniqueExistingPaths(snapshot.files)
 
-  if (process.platform === 'win32' && snapshot.files.length === 0) {
+  if (process.platform === 'win32' && snapshot.files.length === 0 && (snapshot.formats.length === 0 || hasFileFormatHint(snapshot.formats))) {
     snapshot.files = await readPowerShellFileDropList()
   }
 

@@ -21,3 +21,4 @@ clipboard-history.json
 .DS_Store
 Thumbs.db
 release-final/
+release*
