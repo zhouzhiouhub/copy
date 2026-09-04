@@ -162,7 +162,7 @@ function TimelineItem({
       <span className="timeline-copy">
         <span className="timeline-headline">
           <span className="timeline-heading">
-          <strong className="timeline-date">{formatDate(entry.createdAt)}</strong>
+          <strong className="timeline-time">{formatDate(entry.createdAt)}</strong>
           <strong className="timeline-time">{formatClock(entry.createdAt)}</strong>
           </span>
           <span className={`type-pill ${className}`}>
