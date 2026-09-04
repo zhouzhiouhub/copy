@@ -6,17 +6,39 @@
   "scripts": {
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && electron .\"",
     "build": "vite build",
+    "package": "npm run build && electron-builder --win portable",
     "start": "electron ."
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
-    "electron": "latest",
     "lucide-react": "latest",
     "react": "latest",
     "react-dom": "latest",
     "vite": "latest",
     "wait-on": "latest"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "electron": "latest",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.clipboardatlas.app",
+    "productName": "复制档案",
+    "artifactName": "Clipboard-Atlas-${version}.${ext}",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": ["portable"],
+      "icon": "assets/logo.svg"
+    }
+  }
 }
