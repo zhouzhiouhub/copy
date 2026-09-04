@@ -392,6 +392,13 @@ button {
   gap: 4px;
 }
 
+.timeline-heading {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .timeline-time {
   color: #15201c;
   font-size: 12px;
@@ -401,6 +408,7 @@ button {
 .timeline-date {
   color: #7e8a84;
   font-size: 10px;
+  white-space: nowrap;
 }
 
 .timeline-title {
