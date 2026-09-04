@@ -48,12 +48,12 @@ button {
 }
 
 .dock-right {
-  padding-left: 14px;
+  padding-left: 6px;
   border-left: 1px solid #24332e;
 }
 
 .dock-left {
-  padding-right: 14px;
+  padding-right: 6px;
   border-right: 1px solid #24332e;
 }
 
@@ -62,7 +62,7 @@ button {
   top: 0;
   bottom: 0;
   z-index: 30;
-  width: 14px;
+  width: 6px;
   background:
     linear-gradient(180deg, #24332e, #49675c 42%, #f1c95a);
 }
@@ -70,9 +70,9 @@ button {
 .edge-grip::after {
   position: absolute;
   top: 50%;
-  left: 4px;
-  width: 5px;
-  height: 64px;
+  left: 1px;
+  width: 4px;
+  height: 52px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.72);
   content: "";
@@ -109,6 +109,8 @@ button {
 .record-toggle,
 .type-pill,
 .primary-action,
+.lock-action,
+.detail-actions,
 .bottom-bar,
 .bottom-bar span,
 .bottom-bar button {
@@ -202,7 +204,8 @@ button {
 }
 
 .record-toggle,
-.primary-action {
+.primary-action,
+.lock-action {
   flex: 0 0 auto;
   justify-content: center;
   gap: 7px;
@@ -327,11 +330,13 @@ button {
   display: flex;
   width: 100%;
   min-height: 78px;
+  align-items: flex-start;
   gap: 10px;
-  padding: 8px 12px 8px 18px;
+  padding: 8px 8px 8px 18px;
   background: transparent;
   color: #5d6b64;
   text-align: left;
+  cursor: pointer;
 }
 
 .timeline-item:hover {
@@ -393,6 +398,7 @@ button {
 .timeline-copy {
   display: grid;
   min-width: 0;
+  flex: 1 1 auto;
   gap: 2px;
 }
 
@@ -421,6 +427,34 @@ button {
   color: #17201d;
 }
 
+.timeline-item.is-locked .timeline-time::after {
+  display: inline-block;
+  margin-left: 6px;
+  color: #8b6b22;
+  font-size: 10px;
+  font-weight: 700;
+  content: "锁定";
+}
+
+.lock-toggle {
+  z-index: 2;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  margin-top: 2px;
+  place-items: center;
+  border-radius: 7px;
+  background: transparent;
+  color: #8a9690;
+}
+
+.lock-toggle:hover,
+.lock-toggle.is-locked {
+  background: #fff6d9;
+  color: #8b6b22;
+}
+
 .timeline-empty {
   margin: 18px;
   padding: 16px;
@@ -443,6 +477,26 @@ button {
   align-items: flex-start;
   justify-content: space-between;
   gap: 18px;
+}
+
+.detail-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.lock-action {
+  padding: 0 12px;
+  border: 1px solid #e0d3a4;
+  background: #fff9e8;
+  color: #8b6b22;
+}
+
+.lock-action.is-locked {
+  border-color: #23332d;
+  background: #23332d;
+  color: #f4d25f;
 }
 
 .detail-head > div {
@@ -716,7 +770,8 @@ button {
 
   .status-band,
   .toolbar,
-  .detail-head {
+  .detail-head,
+  .detail-actions {
     align-items: stretch;
     flex-direction: column;
   }

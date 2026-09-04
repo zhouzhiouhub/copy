@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('clipboardAtlas', {
   setPaused: (paused) => ipcRenderer.invoke('history:pause', paused),
   openPath: (filePath) => ipcRenderer.invoke('history:open-path', filePath),
   onEntriesUpdated: (callback) => subscribe('history:updated', callback),
+  toggleLock: (id) => ipcRenderer.invoke('history:toggle-lock', id),
 
   getDock: () => ipcRenderer.invoke('dock:get'),
   expandDock: () => ipcRenderer.invoke('dock:expand'),

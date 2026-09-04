@@ -42,7 +42,8 @@ const demoEntries = [
     title: '剪贴板图片',
     preview: '图片内容',
     createdAt: Date.now() - 1000 * 60 * 36,
-    source: '演示数据'
+    source: '演示数据',
+    locked: true
   },
   {
     id: 'demo-video',
@@ -110,8 +111,10 @@ function normalizeEntry(entry) {
   return {
     ...entry,
     text: entry.text ?? entry.value ?? entry.preview ?? '',
+    html: entry.html || '',
     title: entry.title || entry.preview || '剪贴板内容',
-    files: Array.isArray(entry.files) ? entry.files : []
+    files: Array.isArray(entry.files) ? entry.files : [],
+    locked: Boolean(entry.locked)
   }
 }
 
@@ -128,11 +131,15 @@ function primaryMedia(entry) {
   return mediaFile?.mediaUrl || ''
 }
 
-function TimelineItem({ entry, selected, onSelect }) {
+function TimelineItem({ entry, selected, onSelect, onCopy, onToggleLock }) {
   const { Icon, label, className } = typeMeta(entry.type)
 
   return (
-    <button className={`timeline-item ${selected ? 'active' : ''}`} onClick={() => onSelect(entry.id)}>
+    <div
+      className={`timeline-item ${selected ? 'active' : ''} ${entry.locked ? 'is-locked' : ''}`}
+      onMouseEnter={() => onSelect(entry.id)}
+      onClick={() => onCopy(entry.id)}
+    >
       <span className="timeline-stem" />
       <span className={`timeline-icon ${className}`}>
         <Icon size={15} />
@@ -142,7 +149,17 @@ function TimelineItem({ entry, selected, onSelect }) {
         <span className="timeline-date">{formatDate(entry.createdAt)} · {label}</span>
         <span className="timeline-title">{entry.title}</span>
       </span>
-    </button>
+      <button
+        className={`lock-toggle ${entry.locked ? 'is-locked' : ''}`}
+        title={entry.locked ? '取消锁定，到期后将自动清除' : '锁定此条，两天后不自动清除'}
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleLock(entry.id)
+        }}
+      >
+        {entry.locked ? <Lock size={13} /> : <Unlock size={13} />}
+      </button>
+    </div>
   )
 }
 
@@ -170,7 +187,7 @@ function FileList({ files, onOpenPath }) {
   )
 }
 
-function Detail({ entry, copied, onCopy, onOpenPath }) {
+function Detail({ entry, copied, onCopy, onOpenPath, onToggleLock }) {
   if (!entry) {
     return (
       <section className="detail-empty">
@@ -195,10 +212,20 @@ function Detail({ entry, copied, onCopy, onOpenPath }) {
           <h1>{entry.title}</h1>
           <p>{formatFullTime(entry.createdAt)} · {entry.source || '系统剪贴板'}</p>
         </div>
-        <button className="primary-action" onClick={() => onCopy(entry.id)}>
-          {copied ? <Check size={16} /> : <Copy size={16} />}
-          {copied ? '已复制' : '复制回剪贴板'}
-        </button>
+        <div className="detail-actions">
+          <button
+            className={`lock-action ${entry.locked ? 'is-locked' : ''}`}
+            title={entry.locked ? '取消锁定' : '锁定后超过两天也不清除'}
+            onClick={() => onToggleLock(entry.id)}
+          >
+            {entry.locked ? <Lock size={16} /> : <Unlock size={16} />}
+            {entry.locked ? '已锁定' : '锁定保留'}
+          </button>
+          <button className="primary-action" onClick={() => onCopy(entry.id)}>
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+            {copied ? '已复制' : '复制并隐藏'}
+          </button>
+        </div>
       </div>
 
       <div className={`preview-surface ${entry.type}`}>
@@ -313,32 +340,36 @@ function App() {
     window.setTimeout(() => setCopiedId(''), 1100)
   }
 
+  async function toggleLock(id) {
+    if (!api) {
+      setEntries((current) => current.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item)))
+      return
+    }
+    await api.toggleLock(id)
+  }
+
   async function clearEntries() {
-    if (!entries.length) return
-    if (!window.confirm('清空最近 48 小时内的全部复制记录？')) return
-    setEntries([])
-    setSelectedId(null)
-    if (api) await api.clearEntries()
+    const unlockedCount = entries.filter((entry) => !entry.locked).length
+    if (!unlockedCount) return
+    if (!window.confirm('清空未锁定的复制记录？已锁定的记录会保留。')) return
+    if (api) {
+      const remaining = await api.clearEntries()
+      const normalized = (remaining || []).map(normalizeEntry)
+      setEntries(normalized)
+      setSelectedId(normalized[0]?.id || null)
+      return
+    }
+    const remaining = entries.filter((entry) => entry.locked)
+    setEntries(remaining)
+    setSelectedId(remaining[0]?.id || null)
   }
 
   function openPath(filePath) {
     if (api) api.openPath(filePath)
   }
 
-  function expandDock() {
-    if (api) api.expandDock()
-  }
-
-  function collapseDock() {
-    if (!dock.pinned && api) api.collapseDock()
-  }
-
   return (
-    <main
-      className={`app-shell dock-${dock.side} ${dock.expanded ? 'is-expanded' : 'is-collapsed'}`}
-      onMouseEnter={expandDock}
-      onMouseLeave={collapseDock}
-    >
+    <main className={`app-shell dock-${dock.side} ${dock.expanded ? 'is-expanded' : 'is-collapsed'}`}>
       <span className="edge-grip" />
 
       <header className="topbar">
@@ -413,12 +444,19 @@ function App() {
             <aside className="timeline">
               <div className="section-title">
                 <span>时间轴</span>
-                <small>{paused ? '已暂停' : '记录中'}</small>
+                <small>{paused ? '已暂停' : '悬停预览 · 点击复制'}</small>
               </div>
               <div className="timeline-list">
                 {visibleEntries.length ? (
                   visibleEntries.map((entry) => (
-                    <TimelineItem entry={entry} key={entry.id} selected={selected?.id === entry.id} onSelect={setSelectedId} />
+                    <TimelineItem
+                      entry={entry}
+                      key={entry.id}
+                      selected={selected?.id === entry.id}
+                      onSelect={setSelectedId}
+                      onCopy={copyEntry}
+                      onToggleLock={toggleLock}
+                    />
                   ))
                 ) : (
                   <div className="timeline-empty">暂无匹配记录</div>
@@ -427,14 +465,20 @@ function App() {
             </aside>
 
             <section className="detail-pane">
-              <Detail entry={selected} copied={copiedId === selected?.id} onCopy={copyEntry} onOpenPath={openPath} />
+              <Detail
+                entry={selected}
+                copied={copiedId === selected?.id}
+                onCopy={copyEntry}
+                onOpenPath={openPath}
+                onToggleLock={toggleLock}
+              />
             </section>
           </section>
 
           <footer className="bottom-bar">
             <span>
               <ShieldCheck size={15} />
-              本机保存，超过 48 小时自动清理
+              本机保存，超过两天自动清理，锁定的记录会保留
             </span>
             <button onClick={clearEntries}>
               <Trash2 size={14} />

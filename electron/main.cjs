@@ -17,8 +17,12 @@ const { pathToFileURL } = require('node:url')
 
 const MAX_AGE = 48 * 60 * 60 * 1000
 const WINDOW_WIDTH = 620
-const EDGE_PEEK = 14
+const EDGE_PEEK = 6
+const EDGE_HIT = 12
 const WATCH_INTERVAL = 450
+const EDGE_WATCH_INTERVAL = 50
+const COLLAPSE_DELAY = 160
+const EXPAND_SUPPRESS_AFTER_COPY = 700
 
 const IMAGE_EXTENSIONS = new Set([
   '.apng',
@@ -60,8 +64,13 @@ let paused = false
 let dock = { side: 'right', pinned: false, expanded: true }
 let lastPollingSignature = ''
 let suppressCaptureUntil = 0
+let suppressExpandUntil = 0
+let edgeArmed = true
+let pointerSeenInWindow = false
 let clipboardWatcher = null
 let pollTimer = null
+let edgeWatchTimer = null
+let collapseTimer = null
 let isQuitting = false
 
 protocol.registerSchemesAsPrivileged([
@@ -105,6 +114,7 @@ function readStore() {
     entries = []
   }
   pruneEntries()
+  coalesceDuplicates()
 }
 
 function writeStore() {
@@ -114,7 +124,36 @@ function writeStore() {
 
 function pruneEntries() {
   const threshold = Date.now() - MAX_AGE
-  entries = entries.filter((entry) => entry.createdAt > threshold)
+  entries = entries.filter((entry) => entry.locked || entry.createdAt > threshold)
+}
+
+function coalesceDuplicates() {
+  const seen = new Map()
+  const next = []
+
+  for (const entry of entries) {
+    const signature = signatureFor(entry)
+    const existingIndex = seen.get(signature)
+
+    if (existingIndex == null) {
+      seen.set(signature, next.length)
+      next.push(entry)
+      continue
+    }
+
+    const existing = next[existingIndex]
+    const newer = entry.createdAt >= existing.createdAt ? entry : existing
+    const older = newer === entry ? existing : entry
+    next[existingIndex] = {
+      ...older,
+      ...newer,
+      id: older.id,
+      locked: Boolean(existing.locked || entry.locked),
+      createdAt: Math.max(existing.createdAt || 0, entry.createdAt || 0)
+    }
+  }
+
+  entries = next.sort((left, right) => (right.createdAt || 0) - (left.createdAt || 0))
 }
 
 function notifyHistoryChanged() {
@@ -128,7 +167,8 @@ function notifyDockChanged() {
 }
 
 function getDisplayWorkArea() {
-  if (!mainWindow || mainWindow.isDestroyed()) return screen.getPrimaryDisplay().workArea
+  const cursorDisplay = screen.getDisplayNearestPoint(screen.getCursorScreenPoint())
+  if (!mainWindow || mainWindow.isDestroyed() || !dock.expanded) return cursorDisplay.workArea
   return screen.getDisplayMatching(mainWindow.getBounds()).workArea
 }
 
@@ -151,10 +191,90 @@ function applyDockBounds(animated = true) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   mainWindow.setBounds(dockBounds(), animated)
   mainWindow.setAlwaysOnTop(true, 'floating')
+  try {
+    mainWindow.setIgnoreMouseEvents(!dock.expanded, { forward: true })
+  } catch {
+    mainWindow.setIgnoreMouseEvents(!dock.expanded)
+  }
+}
+
+function hideAfterCopy() {
+  suppressExpandUntil = Date.now() + EXPAND_SUPPRESS_AFTER_COPY
+  edgeArmed = false
+  if (collapseTimer) {
+    clearTimeout(collapseTimer)
+    collapseTimer = null
+  }
+  setDockExpanded(false, true)
+}
+
+function cursorEdgeSide(point, display) {
+  const { x, y, width, height } = display.bounds
+  if (point.y < y || point.y > y + height) return null
+  if (point.x <= x + EDGE_HIT) return 'left'
+  if (point.x >= x + width - EDGE_HIT) return 'right'
+  return null
+}
+
+function isPointInWindow(point) {
+  if (!mainWindow || mainWindow.isDestroyed()) return false
+  const bounds = mainWindow.getBounds()
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  )
+}
+
+function tickEdgeWatch() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+
+  const point = screen.getCursorScreenPoint()
+  const display = screen.getDisplayNearestPoint(point)
+  const edgeSide = cursorEdgeSide(point, display)
+
+  if (!edgeSide) edgeArmed = true
+
+  if (!dock.expanded) {
+    if (Date.now() < suppressExpandUntil || !edgeArmed || !edgeSide) return
+    if (dock.side !== edgeSide) {
+      setDockSide(edgeSide)
+      return
+    }
+    setDockExpanded(true)
+    return
+  }
+
+  if (dock.pinned) return
+  if (isPointInWindow(point)) pointerSeenInWindow = true
+  if (!pointerSeenInWindow) return
+
+  const stayOpen = isPointInWindow(point) || edgeSide === dock.side
+  if (stayOpen) {
+    if (collapseTimer) {
+      clearTimeout(collapseTimer)
+      collapseTimer = null
+    }
+    return
+  }
+
+  if (!collapseTimer) {
+    collapseTimer = setTimeout(() => {
+      collapseTimer = null
+      if (!dock.pinned) setDockExpanded(false)
+    }, COLLAPSE_DELAY)
+  }
+}
+
+function startEdgeWatcher() {
+  if (edgeWatchTimer) return
+  edgeWatchTimer = setInterval(tickEdgeWatch, EDGE_WATCH_INTERVAL)
 }
 
 function setDockExpanded(expanded, force = false) {
   if (dock.pinned && !expanded && !force) return dock
+  if (expanded) pointerSeenInWindow = false
   dock = { ...dock, expanded }
   applyDockBounds()
   writeStore()
@@ -449,6 +569,7 @@ function buildTextEntry(snapshot) {
     title: firstLine.slice(0, 48) || '文本内容',
     preview: text,
     text,
+    html: snapshot.html || '',
     value: text,
     source: '系统剪贴板',
     formats: snapshot.formats
@@ -464,12 +585,43 @@ function buildEntry(snapshot) {
 
 function signatureFor(entry) {
   if (!entry) return ''
-  if (entry.files?.length) return `files:${entry.files.map((file) => file.path).join('|')}`
-  if (entry.type === 'image') return `image:${(entry.dataUrl || entry.value || '').slice(0, 500)}`
+  if (entry.files?.length) return `files:${entry.files.map((file) => `${file.path}`.toLowerCase()).join('|')}`
+  if (entry.type === 'image') {
+    const data = entry.dataUrl || entry.value || ''
+    return `image:${data.length}:${data.slice(0, 160)}:${data.slice(-160)}`
+  }
   return `text:${entry.text || entry.value || entry.preview || ''}`
 }
 
-async function captureClipboard({ allowDuplicate = false } = {}) {
+function upsertEntry(entry) {
+  const signature = signatureFor(entry)
+  const existingIndex = entries.findIndex((item) => signatureFor(item) === signature)
+  const createdAt = Date.now()
+
+  if (existingIndex >= 0) {
+    const existing = entries[existingIndex]
+    const merged = {
+      ...existing,
+      ...entry,
+      id: existing.id,
+      locked: Boolean(existing.locked),
+      createdAt
+    }
+    entries = [merged, ...entries.filter((_, index) => index !== existingIndex)]
+    return merged
+  }
+
+  const created = {
+    id: `${createdAt}-${Math.random().toString(16).slice(2)}`,
+    createdAt,
+    locked: false,
+    ...entry
+  }
+  entries = [created, ...entries]
+  return created
+}
+
+async function captureClipboard({ fromSequenceChange = false } = {}) {
   if (paused || Date.now() < suppressCaptureUntil) return
 
   const snapshot = await readClipboardSnapshot()
@@ -477,18 +629,10 @@ async function captureClipboard({ allowDuplicate = false } = {}) {
   if (!entry) return
 
   const signature = signatureFor(entry)
-  if (!allowDuplicate && signature === lastPollingSignature) return
+  if (!fromSequenceChange && signature === lastPollingSignature) return
   lastPollingSignature = signature
 
-  entries = [
-    {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      createdAt: Date.now(),
-      ...entry
-    },
-    ...entries
-  ]
-
+  upsertEntry(entry)
   pruneEntries()
   writeStore()
   notifyHistoryChanged()
@@ -517,7 +661,7 @@ function spawnPowerShell(script, { sta = false } = {}) {
 function startPollingWatcher() {
   if (pollTimer) return
   pollTimer = setInterval(() => {
-    captureClipboard({ allowDuplicate: false })
+    captureClipboard({ fromSequenceChange: false })
   }, WATCH_INTERVAL)
 }
 
@@ -551,14 +695,28 @@ while ($true) {
   clipboardWatcher = spawnPowerShell(script)
 
   clipboardWatcher.stdout.on('data', () => {
-    captureClipboard({ allowDuplicate: true })
+    captureClipboard({ fromSequenceChange: true })
   })
 
   clipboardWatcher.on('error', startPollingWatcher)
   clipboardWatcher.on('exit', startPollingWatcher)
 }
 
-async function writeTextToClipboard(text) {
+async function writeTextToClipboard(entry) {
+  const text = typeof entry === 'string' ? entry : entry.text || entry.value || entry.preview || ''
+  const html = typeof entry === 'string' ? '' : entry.html || ''
+
+  try {
+    if (typeof clipboard.write === 'function') {
+      const payload = { text }
+      if (html) payload.html = html
+      clipboard.write(payload)
+      return
+    }
+  } catch {
+    // Some Electron builds only accept ClipboardItem arrays on write().
+  }
+
   if (typeof clipboard.writeText === 'function') {
     await maybeAwait(clipboard.writeText(text))
   }
@@ -666,10 +824,12 @@ app.whenReady().then(() => {
   readStore()
   createWindow()
   startClipboardWatcher()
-  captureClipboard({ allowDuplicate: false })
+  startEdgeWatcher()
+  captureClipboard({ fromSequenceChange: false })
 
   setInterval(() => {
     pruneEntries()
+    coalesceDuplicates()
     writeStore()
     notifyHistoryChanged()
   }, 60 * 60 * 1000)
@@ -683,6 +843,9 @@ app.on('activate', () => {
 app.on('before-quit', () => {
   isQuitting = true
   if (clipboardWatcher) clipboardWatcher.kill()
+  if (pollTimer) clearInterval(pollTimer)
+  if (edgeWatchTimer) clearInterval(edgeWatchTimer)
+  if (collapseTimer) clearTimeout(collapseTimer)
 })
 
 app.on('window-all-closed', () => {})
@@ -696,27 +859,36 @@ ipcMain.handle('history:pause', (_event, value) => {
 })
 
 ipcMain.handle('history:clear', () => {
-  entries = []
+  entries = entries.filter((entry) => entry.locked)
   writeStore()
   notifyHistoryChanged()
   return entries
+})
+
+ipcMain.handle('history:toggle-lock', (_event, id) => {
+  entries = entries.map((item) => (item.id === id ? { ...item, locked: !item.locked } : item))
+  writeStore()
+  notifyHistoryChanged()
+  return entries.find((item) => item.id === id) || null
 })
 
 ipcMain.handle('history:copy', async (_event, id) => {
   const entry = entries.find((item) => item.id === id)
   if (!entry) return false
 
-  suppressCaptureUntil = Date.now() + 900
+  suppressCaptureUntil = Date.now() + 1600
+  lastPollingSignature = signatureFor(entry)
 
   let copied = false
   if (entry.files?.length) copied = await writeFilesToClipboard(entry.files.map((file) => file.path))
   else if (entry.type === 'image') copied = await writeImageToClipboard(entry)
-  else copied = await writeTextToClipboard(entry.text || entry.value || entry.preview || '').then(() => true)
+  else copied = await writeTextToClipboard(entry).then(() => true)
 
   if (copied) {
-    entries = [entry, ...entries.filter((item) => item.id !== id)]
+    entries = [{ ...entry, createdAt: Date.now() }, ...entries.filter((item) => item.id !== id)]
     writeStore()
     notifyHistoryChanged()
+    hideAfterCopy()
   }
 
   return copied
@@ -731,7 +903,7 @@ ipcMain.handle('history:open-path', async (_event, filePath) => {
 
 ipcMain.handle('dock:get', () => dock)
 ipcMain.handle('dock:expand', () => setDockExpanded(true))
-ipcMain.handle('dock:collapse', () => setDockExpanded(false))
+ipcMain.handle('dock:collapse', () => setDockExpanded(false, true))
 ipcMain.handle('dock:set-side', (_event, side) => setDockSide(side))
 ipcMain.handle('dock:set-pinned', (_event, pinned) => setDockPinned(pinned))
 ipcMain.handle('app:quit', () => app.quit())
