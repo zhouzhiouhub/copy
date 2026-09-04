@@ -40,7 +40,7 @@ const demoEntries = [
   {
     id: 'demo-image',
     type: 'image',
-    title: '剪贴板图片',
+    title: '',
     preview: '图片内容',
     createdAt: Date.now() - 1000 * 60 * 36,
     source: '演示数据',
@@ -109,12 +109,15 @@ function typeMeta(type) {
 }
 
 function normalizeEntry(entry) {
+  const files = Array.isArray(entry.files) ? entry.files : []
+  const isClipboardImage = entry.type === 'image' && files.length === 0
+
   return {
     ...entry,
     text: entry.text ?? entry.value ?? entry.preview ?? '',
     html: entry.html || '',
-    title: entry.title || entry.preview || '剪贴板内容',
-    files: Array.isArray(entry.files) ? entry.files : [],
+    title: isClipboardImage ? '' : entry.title || entry.preview || '剪贴板内容',
+    files,
     locked: Boolean(entry.locked)
   }
 }
@@ -165,7 +168,7 @@ function TimelineItem({
           </span>
         </span>
         <span className="timeline-date">{formatDate(entry.createdAt)}</span>
-        <strong className="timeline-title">{entry.title}</strong>
+        {entry.title ? <strong className="timeline-title">{entry.title}</strong> : null}
         <CardBody entry={entry} />
         <FileList files={entry.files} onOpenPath={onOpenPath} />
       </span>
@@ -242,7 +245,7 @@ function CardBody({ entry }) {
   }
 
   if (entry.type === 'image' && mediaSrc) {
-    return <img className="timeline-media" src={mediaSrc} alt={entry.title} />
+    return <img className="timeline-media" src={mediaSrc} alt={entry.title || '图片'} />
   }
 
   if (entry.type === 'video' && mediaSrc) {

@@ -732,10 +732,11 @@ function buildFileEntry(snapshot) {
   }
 }
 
+// 构建图片条目
 function buildImageEntry(snapshot) {
   return {
     type: 'image',
-    title: '剪贴板图片',
+    title: '',
     preview: '图片内容',
     dataUrl: snapshot.imageDataUrl,
     value: snapshot.imageDataUrl,
@@ -744,6 +745,7 @@ function buildImageEntry(snapshot) {
   }
 }
 
+// 构建文本条目
 function buildTextEntry(snapshot) {
   const text = snapshot.text || ''
   const firstLine = text.split(/\r?\n/).find((line) => line.trim()) || text
@@ -760,6 +762,7 @@ function buildTextEntry(snapshot) {
   }
 }
 
+// 构建条目
 function buildEntry(snapshot) {
   if (snapshot.files.length) return buildFileEntry(snapshot)
   if (snapshot.imageDataUrl) return buildImageEntry(snapshot)
