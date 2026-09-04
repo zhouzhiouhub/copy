@@ -612,10 +612,10 @@ function upsertEntry(entry) {
   }
 
   const created = {
+    ...entry,
     id: `${createdAt}-${Math.random().toString(16).slice(2)}`,
     createdAt,
-    locked: false,
-    ...entry
+    locked: false
   }
   entries = [created, ...entries]
   return created
