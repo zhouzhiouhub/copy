@@ -1023,9 +1023,9 @@ app.whenReady().then(() => {
     writeStore()
     notifyHistoryChanged()
   }, 60 * 60 * 1000)
-})
 
-screen.on('display-metrics-changed', () => applyDockBounds(false))
+  screen.on('display-metrics-changed', () => applyDockBounds(false))
+})
 
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
