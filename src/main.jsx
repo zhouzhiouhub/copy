@@ -72,8 +72,7 @@ function formatClock(timestamp) {
 function formatDate(timestamp) {
   return new Intl.DateTimeFormat('zh-CN', {
     month: '2-digit',
-    day: '2-digit',
-    weekday: 'short'
+    day: '2-digit'
   }).format(timestamp)
 }
 

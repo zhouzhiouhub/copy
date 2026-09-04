@@ -451,6 +451,8 @@ button {
 .timeline-preview-text {
   display: -webkit-box;
   overflow: hidden;
+  width: 100%;
+  height: calc(1.4em * 3);
   margin: 2px 0 0;
   color: #1e2925;
   font-size: 11px;
@@ -458,7 +460,7 @@ button {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
 }
 
 .timeline-media {
