@@ -76,6 +76,8 @@ let collapseTimer = null
 let applyingDockBounds = false
 let isQuitting = false
 let pasteTarget = null
+let lastTargetHwnd = '0'
+let lastHwndCaptureAt = 0
 let pendingPastePoint = null
 let pendingPasteSince = 0
 
@@ -252,6 +254,47 @@ function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+function nativeHwndValue() {
+  if (!mainWindow || mainWindow.isDestroyed()) return '0'
+  try {
+    const handle = mainWindow.getNativeWindowHandle()
+    if (Buffer.isBuffer(handle) && handle.length >= 8) return handle.readBigUInt64LE(0).toString()
+    if (Buffer.isBuffer(handle) && handle.length >= 4) return String(handle.readUInt32LE(0))
+  } catch {
+    // Native handle is unavailable in some test hosts.
+  }
+  return '0'
+}
+
+function rememberHwnd(value) {
+  const hwnd = String(value || '').trim()
+  if (!hwnd || hwnd === '0' || hwnd === nativeHwndValue()) return
+  lastTargetHwnd = hwnd
+}
+
+function captureForegroundHwnd() {
+  if (process.platform !== 'win32') return
+  const ours = nativeHwndValue()
+  const script = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public static class AtlasFg {
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  public static long Read() { return GetForegroundWindow().ToInt64(); }
+}
+"@
+$h = [AtlasFg]::Read()
+if ($h -ne 0 -and $h -ne ${ours}) { Write-Output $h }
+`
+  const child = spawnPowerShell(script)
+  let output = ''
+  child.stdout?.on('data', (chunk) => {
+    output += chunk.toString()
+  })
+  child.on('close', () => rememberHwnd(output))
+}
+
 function rememberPasteTarget(point) {
   const display = screen.getDisplayNearestPoint(point)
   if (cursorEdgeSide(point, display)) return
@@ -270,15 +313,25 @@ function rememberPasteTarget(point) {
 
   if (Date.now() - pendingPasteSince >= 250) {
     pasteTarget = { x: Math.round(point.x), y: Math.round(point.y) }
+    if (Date.now() - lastHwndCaptureAt > 400) {
+      lastHwndCaptureAt = Date.now()
+      captureForegroundHwnd()
+    }
   }
 }
 
 function pasteAtSavedPoint() {
-  if (process.platform !== 'win32' || !pasteTarget) return Promise.resolve(false)
+  if (process.platform !== 'win32') return Promise.resolve(false)
 
-  const physical = screen.dipToScreenPoint(pasteTarget)
-  const x = Math.round(physical.x)
-  const y = Math.round(physical.y)
+  const ours = nativeHwndValue()
+  const saved = lastTargetHwnd || '0'
+  let x = -1
+  let y = -1
+  if (pasteTarget) {
+    const physical = screen.dipToScreenPoint(pasteTarget)
+    x = Math.round(physical.x)
+    y = Math.round(physical.y)
+  }
 
   const script = `
 Add-Type @"
@@ -288,41 +341,80 @@ using System.Threading;
 public static class AtlasPaste {
   [StructLayout(LayoutKind.Sequential)]
   public struct POINT { public int X; public int Y; }
-  [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
-  [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+  [StructLayout(LayoutKind.Sequential)]
+  public struct RECT { public int Left; public int Top; public int Right; public int Bottom; }
+  [StructLayout(LayoutKind.Sequential)]
+  public struct GUITHREADINFO {
+    public int cbSize;
+    public int flags;
+    public IntPtr hwndActive;
+    public IntPtr hwndFocus;
+    public IntPtr hwndCapture;
+    public IntPtr hwndMenuOwner;
+    public IntPtr hwndMoveSize;
+    public IntPtr hwndCaret;
+    public RECT rcCaret;
+  }
   [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
   [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT Point);
   [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool IsWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern IntPtr SetFocus(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool GetGUIThreadInfo(uint idThread, ref GUITHREADINFO lpgui);
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
   [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
   [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
   [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
-  public static void Run(int x, int y) {
-    POINT p; p.X = x; p.Y = y;
-    IntPtr hit = WindowFromPoint(p);
-    IntPtr root = hit == IntPtr.Zero ? IntPtr.Zero : GetAncestor(hit, 2);
-    if (root == IntPtr.Zero) root = hit;
-    if (root != IntPtr.Zero) {
-      IntPtr fg = GetForegroundWindow();
-      uint dummy;
-      uint cur = GetCurrentThreadId();
-      uint fgT = GetWindowThreadProcessId(fg, out dummy);
-      uint tgT = GetWindowThreadProcessId(root, out dummy);
-      AttachThreadInput(cur, fgT, true);
-      AttachThreadInput(cur, tgT, true);
-      ShowWindow(root, 9);
-      BringWindowToTop(root);
-      SetForegroundWindow(root);
-      AttachThreadInput(cur, fgT, false);
-      AttachThreadInput(cur, tgT, false);
+  static IntPtr Ptr(long value) {
+    return IntPtr.Size == 8 ? new IntPtr(value) : new IntPtr(unchecked((int)value));
+  }
+  static IntPtr Root(IntPtr hwnd) {
+    if (hwnd == IntPtr.Zero) return IntPtr.Zero;
+    IntPtr ancestor = GetAncestor(hwnd, 2);
+    return ancestor == IntPtr.Zero ? hwnd : ancestor;
+  }
+  static bool IsOurs(IntPtr hwnd, IntPtr ours) {
+    if (hwnd == IntPtr.Zero || ours == IntPtr.Zero) return hwnd == ours;
+    return hwnd == ours || Root(hwnd) == ours;
+  }
+  static IntPtr Resolve(long oursValue, long savedValue, int x, int y) {
+    IntPtr ours = Ptr(oursValue);
+    if (x >= 0 && y >= 0) {
+      POINT p; p.X = x; p.Y = y;
+      IntPtr hit = Root(WindowFromPoint(p));
+      if (!IsOurs(hit, ours)) return hit;
     }
-    SetCursorPos(x, y);
-    mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
-    mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
-    Thread.Sleep(50);
+    IntPtr saved = Ptr(savedValue);
+    if (saved != IntPtr.Zero && IsWindow(saved) && !IsOurs(saved, ours)) return Root(saved);
+    IntPtr fg = Root(GetForegroundWindow());
+    if (!IsOurs(fg, ours)) return fg;
+    return IntPtr.Zero;
+  }
+  static void Activate(IntPtr root) {
+    if (root == IntPtr.Zero) return;
+    if (IsIconic(root)) ShowWindow(root, 9);
+    IntPtr fg = GetForegroundWindow();
+    uint dummy;
+    uint cur = GetCurrentThreadId();
+    uint fgT = GetWindowThreadProcessId(fg, out dummy);
+    uint tgT = GetWindowThreadProcessId(root, out dummy);
+    AttachThreadInput(cur, fgT, true);
+    AttachThreadInput(cur, tgT, true);
+    BringWindowToTop(root);
+    SetForegroundWindow(root);
+    GUITHREADINFO info = new GUITHREADINFO();
+    info.cbSize = Marshal.SizeOf(typeof(GUITHREADINFO));
+    if (GetGUIThreadInfo(tgT, ref info) && info.hwndFocus != IntPtr.Zero) SetFocus(info.hwndFocus);
+    AttachThreadInput(cur, fgT, false);
+    AttachThreadInput(cur, tgT, false);
+  }
+  public static void Run(long ours, long saved, int x, int y) {
+    Activate(Resolve(ours, saved, x, y));
+    Thread.Sleep(40);
     keybd_event(0x11, 0, 0, UIntPtr.Zero);
     keybd_event(0x56, 0, 0, UIntPtr.Zero);
     keybd_event(0x56, 0, 2, UIntPtr.Zero);
@@ -330,7 +422,7 @@ public static class AtlasPaste {
   }
 }
 "@
-[AtlasPaste]::Run(${x}, ${y})
+[AtlasPaste]::Run(${ours}L, ${saved}L, ${x}, ${y})
 `
 
   return new Promise((resolve) => {
@@ -459,6 +551,7 @@ function saveWindowDockPosition() {
 
 function setDockExpanded(expanded, force = false) {
   if (dock.pinned && !expanded && !force) return dock
+  if (expanded && !dock.expanded) captureForegroundHwnd()
   if (expanded) pointerSeenInWindow = false
   dock = { ...dock, expanded }
   applyDockBounds()
