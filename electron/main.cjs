@@ -16,10 +16,8 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
 const MAX_AGE = 48 * 60 * 60 * 1000
-const PANEL_WIDTH_RATIO = 1 / 12
-const PANEL_HEIGHT_RATIO = 1 / 3
-const MIN_PANEL_WIDTH = 180
-const MIN_PANEL_HEIGHT = 300
+const PANEL_WIDTH = 280
+const PANEL_HEIGHT = 580
 const EDGE_PEEK = 6
 const EDGE_HIT = 12
 const WATCH_INTERVAL = 450
@@ -107,12 +105,10 @@ function normalizeVerticalRatio(value) {
 function panelSizeForWorkArea(workArea) {
   const maxWidth = Math.max(EDGE_PEEK, workArea.width - EDGE_PEEK)
   const maxHeight = Math.max(1, workArea.height)
-  const minWidth = Math.min(MIN_PANEL_WIDTH, maxWidth)
-  const minHeight = Math.min(MIN_PANEL_HEIGHT, maxHeight)
 
   return {
-    width: Math.round(clamp(workArea.width * PANEL_WIDTH_RATIO, minWidth, maxWidth)),
-    height: Math.round(clamp(workArea.height * PANEL_HEIGHT_RATIO, minHeight, maxHeight))
+    width: Math.round(clamp(PANEL_WIDTH, EDGE_PEEK, maxWidth)),
+    height: Math.round(clamp(PANEL_HEIGHT, 1, maxHeight))
   }
 }
 
@@ -225,7 +221,12 @@ function dockBounds(expanded = dock.expanded) {
 function applyDockBounds(animated = true) {
   if (!mainWindow || mainWindow.isDestroyed()) return
   applyingDockBounds = true
-  mainWindow.setBounds(dockBounds(), animated)
+  const bounds = dockBounds()
+  mainWindow.setResizable(true)
+  mainWindow.setMinimumSize(bounds.width, bounds.height)
+  mainWindow.setMaximumSize(bounds.width, bounds.height)
+  mainWindow.setBounds(bounds, false)
+  mainWindow.setResizable(false)
   mainWindow.setAlwaysOnTop(true, 'floating')
   try {
     mainWindow.setIgnoreMouseEvents(!dock.expanded, { forward: true })
@@ -964,8 +965,15 @@ foreach ($path in $paths) { [void]$collection.Add([string]$path) }
 }
 
 function createWindow() {
+  const bounds = dockBounds(dock.expanded)
   mainWindow = new BrowserWindow({
-    ...dockBounds(dock.expanded),
+    ...bounds,
+    width: bounds.width,
+    height: bounds.height,
+    minWidth: bounds.width,
+    maxWidth: bounds.width,
+    minHeight: bounds.height,
+    maxHeight: bounds.height,
     frame: false,
     resizable: false,
     show: false,
