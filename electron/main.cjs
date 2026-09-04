@@ -16,8 +16,9 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
 const MAX_AGE = 48 * 60 * 60 * 1000
-const PANEL_SIZE_RATIO = 1 / 3
-const MIN_PANEL_WIDTH = 420
+const PANEL_WIDTH_RATIO = 1 / 6
+const PANEL_HEIGHT_RATIO = 1 / 3
+const MIN_PANEL_WIDTH = 320
 const MIN_PANEL_HEIGHT = 300
 const EDGE_PEEK = 6
 const EDGE_HIT = 12
@@ -110,8 +111,8 @@ function panelSizeForWorkArea(workArea) {
   const minHeight = Math.min(MIN_PANEL_HEIGHT, maxHeight)
 
   return {
-    width: Math.round(clamp(workArea.width * PANEL_SIZE_RATIO, minWidth, maxWidth)),
-    height: Math.round(clamp(workArea.height * PANEL_SIZE_RATIO, minHeight, maxHeight))
+    width: Math.round(clamp(workArea.width * PANEL_WIDTH_RATIO, minWidth, maxWidth)),
+    height: Math.round(clamp(workArea.height * PANEL_HEIGHT_RATIO, minHeight, maxHeight))
   }
 }
 
