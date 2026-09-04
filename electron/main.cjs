@@ -22,7 +22,8 @@ const EDGE_HIT = 12
 const WATCH_INTERVAL = 450
 const EDGE_WATCH_INTERVAL = 50
 const COLLAPSE_DELAY = 160
-const EXPAND_SUPPRESS_AFTER_COPY = 700
+const EXPAND_SUPPRESS_AFTER_COPY = 1400
+const PASTE_SETTLE_MS = 160
 
 const IMAGE_EXTENSIONS = new Set([
   '.apng',
@@ -72,6 +73,9 @@ let pollTimer = null
 let edgeWatchTimer = null
 let collapseTimer = null
 let isQuitting = false
+let pasteTarget = null
+let pendingPastePoint = null
+let pendingPasteSince = 0
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -208,6 +212,120 @@ function hideAfterCopy() {
   setDockExpanded(false, true)
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+function rememberPasteTarget(point) {
+  const display = screen.getDisplayNearestPoint(point)
+  if (cursorEdgeSide(point, display)) return
+  if (dock.expanded && isPointInWindow(point)) return
+
+  const same =
+    pendingPastePoint &&
+    Math.abs(pendingPastePoint.x - point.x) < 28 &&
+    Math.abs(pendingPastePoint.y - point.y) < 28
+
+  if (!same) {
+    pendingPastePoint = { x: point.x, y: point.y }
+    pendingPasteSince = Date.now()
+    return
+  }
+
+  if (Date.now() - pendingPasteSince >= 250) {
+    pasteTarget = { x: Math.round(point.x), y: Math.round(point.y) }
+  }
+}
+
+function pasteAtSavedPoint() {
+  if (process.platform !== 'win32' || !pasteTarget) return Promise.resolve(false)
+
+  const physical = screen.dipToScreenPoint(pasteTarget)
+  const x = Math.round(physical.x)
+  const y = Math.round(physical.y)
+
+  const script = `
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Threading;
+public static class AtlasPaste {
+  [StructLayout(LayoutKind.Sequential)]
+  public struct POINT { public int X; public int Y; }
+  [DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+  [DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, UIntPtr dwExtraInfo);
+  [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+  [DllImport("user32.dll")] public static extern IntPtr WindowFromPoint(POINT Point);
+  [DllImport("user32.dll")] public static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+  [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr hWnd);
+  [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint idAttach, uint idAttachTo, bool fAttach);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+  public static void Run(int x, int y) {
+    POINT p; p.X = x; p.Y = y;
+    IntPtr hit = WindowFromPoint(p);
+    IntPtr root = hit == IntPtr.Zero ? IntPtr.Zero : GetAncestor(hit, 2);
+    if (root == IntPtr.Zero) root = hit;
+    if (root != IntPtr.Zero) {
+      IntPtr fg = GetForegroundWindow();
+      uint dummy;
+      uint cur = GetCurrentThreadId();
+      uint fgT = GetWindowThreadProcessId(fg, out dummy);
+      uint tgT = GetWindowThreadProcessId(root, out dummy);
+      AttachThreadInput(cur, fgT, true);
+      AttachThreadInput(cur, tgT, true);
+      ShowWindow(root, 9);
+      BringWindowToTop(root);
+      SetForegroundWindow(root);
+      AttachThreadInput(cur, fgT, false);
+      AttachThreadInput(cur, tgT, false);
+    }
+    SetCursorPos(x, y);
+    mouse_event(0x0002, 0, 0, 0, UIntPtr.Zero);
+    mouse_event(0x0004, 0, 0, 0, UIntPtr.Zero);
+    Thread.Sleep(50);
+    keybd_event(0x11, 0, 0, UIntPtr.Zero);
+    keybd_event(0x56, 0, 0, UIntPtr.Zero);
+    keybd_event(0x56, 0, 2, UIntPtr.Zero);
+    keybd_event(0x11, 0, 2, UIntPtr.Zero);
+  }
+}
+"@
+[AtlasPaste]::Run(${x}, ${y})
+`
+
+  return new Promise((resolve) => {
+    const child = spawnPowerShell(script)
+    const timer = setTimeout(() => {
+      try {
+        child.kill()
+      } catch {
+        // Ignore kill races if the helper already exited.
+      }
+      resolve(false)
+    }, 4000)
+
+    child.on('error', () => {
+      clearTimeout(timer)
+      resolve(false)
+    })
+    child.on('close', (code) => {
+      clearTimeout(timer)
+      resolve(code === 0)
+    })
+  })
+}
+
+async function hideAndPaste() {
+  hideAfterCopy()
+  await delay(PASTE_SETTLE_MS)
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.blur()
+  await pasteAtSavedPoint()
+}
+
 function cursorEdgeSide(point, display) {
   const { x, y, width, height } = display.bounds
   if (point.y < y || point.y > y + height) return null
@@ -231,6 +349,7 @@ function tickEdgeWatch() {
   if (!mainWindow || mainWindow.isDestroyed()) return
 
   const point = screen.getCursorScreenPoint()
+  rememberPasteTarget(point)
   const display = screen.getDisplayNearestPoint(point)
   const edgeSide = cursorEdgeSide(point, display)
 
@@ -706,20 +825,25 @@ async function writeTextToClipboard(entry) {
   const text = typeof entry === 'string' ? entry : entry.text || entry.value || entry.preview || ''
   const html = typeof entry === 'string' ? '' : entry.html || ''
 
-  try {
-    if (typeof clipboard.write === 'function') {
-      const payload = { text }
-      if (html) payload.html = html
-      clipboard.write(payload)
-      return
+  if (ClipboardItem && typeof clipboard.write === 'function') {
+    try {
+      const items = {
+        'text/plain': new Blob([text], { type: 'text/plain' })
+      }
+      if (html) items['text/html'] = new Blob([html], { type: 'text/html' })
+      await clipboard.write([new ClipboardItem(items)])
+      return true
+    } catch {
+      // Fall through to the legacy text helper.
     }
-  } catch {
-    // Some Electron builds only accept ClipboardItem arrays on write().
   }
 
   if (typeof clipboard.writeText === 'function') {
     await maybeAwait(clipboard.writeText(text))
+    return true
   }
+
+  return Boolean(text)
 }
 
 async function writeImageToClipboard(entry) {
@@ -882,13 +1006,13 @@ ipcMain.handle('history:copy', async (_event, id) => {
   let copied = false
   if (entry.files?.length) copied = await writeFilesToClipboard(entry.files.map((file) => file.path))
   else if (entry.type === 'image') copied = await writeImageToClipboard(entry)
-  else copied = await writeTextToClipboard(entry).then(() => true)
+  else copied = await writeTextToClipboard(entry)
 
   if (copied) {
     entries = [{ ...entry, createdAt: Date.now() }, ...entries.filter((item) => item.id !== id)]
     writeStore()
     notifyHistoryChanged()
-    hideAfterCopy()
+    hideAndPaste()
   }
 
   return copied

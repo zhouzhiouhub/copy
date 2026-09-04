@@ -466,10 +466,132 @@ button {
 }
 
 .detail-pane {
+  display: flex;
   min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: #e7ebe5;
+}
+
+.clip-list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 10px;
   overflow-y: auto;
-  padding: 22px;
-  background: #f9faf7;
+  padding: 12px;
+}
+
+.clip-card {
+  position: relative;
+  min-height: 88px;
+  padding: 16px 40px 16px 16px;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(24, 34, 31, 0.06);
+  color: #1b1b1b;
+  cursor: pointer;
+}
+
+.clip-card:hover {
+  background: #fbfbfb;
+}
+
+.clip-card.is-selected {
+  border-color: #4cc2ff;
+}
+
+.card-more {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 6px;
+  background: transparent;
+  color: #6b6b6b;
+}
+
+.card-more:hover,
+.card-more.is-open {
+  background: #f0f0f0;
+  color: #1b1b1b;
+}
+
+.card-menu {
+  position: absolute;
+  top: 38px;
+  right: 8px;
+  z-index: 4;
+  display: grid;
+  min-width: 148px;
+  padding: 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+.card-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: transparent;
+  color: #1b1b1b;
+  font-size: 12px;
+  text-align: left;
+}
+
+.card-menu button:hover {
+  background: #f3f3f3;
+}
+
+.card-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.copied-flag {
+  color: #2f7256;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.card-text {
+  margin: 0;
+  color: #1b1b1b;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.card-media {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  border-radius: 4px;
+  object-fit: contain;
+  background: #101614;
+}
+
+.clip-card .file-list {
+  margin-top: 10px;
+}
+
+.detail-pane .detail-empty {
+  flex: 1 1 auto;
 }
 
 .detail-head {
@@ -794,6 +916,6 @@ button {
   }
 
   .detail-pane {
-    padding: 16px;
+    padding: 0;
   }
 }

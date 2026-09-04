@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Image,
   Lock,
+  MoreHorizontal,
   Pause,
   Pin,
   PinOff,
@@ -171,7 +172,14 @@ function FileList({ files, onOpenPath }) {
       {files.map((file) => {
         const Icon = file.kind === 'video' ? FileVideo : file.kind === 'image' ? FileImage : file.kind === 'folder' ? FolderOpen : File
         return (
-          <button className="file-row" key={file.path || file.name} onClick={() => file.path && onOpenPath(file.path)}>
+          <button
+            className="file-row"
+            key={file.path || file.name}
+            onClick={(event) => {
+              event.stopPropagation()
+              if (file.path) onOpenPath(file.path)
+            }}
+          >
             <span className={`file-kind ${file.kind || 'file'}`}>
               <Icon size={16} />
             </span>
@@ -187,8 +195,117 @@ function FileList({ files, onOpenPath }) {
   )
 }
 
-function Detail({ entry, copied, onCopy, onOpenPath, onToggleLock }) {
-  if (!entry) {
+function CardBody({ entry }) {
+  const mediaSrc = primaryMedia(entry)
+
+  if (entry.type === 'text') {
+    return <p className="card-text">{entry.text}</p>
+  }
+
+  if (entry.type === 'image' && mediaSrc) {
+    return <img className="card-media" src={mediaSrc} alt={entry.title} />
+  }
+
+  if (entry.type === 'video' && mediaSrc) {
+    return (
+      <video
+        className="card-media"
+        src={mediaSrc}
+        controls
+        preload="metadata"
+        onClick={(event) => event.stopPropagation()}
+      />
+    )
+  }
+
+  if (entry.type === 'image') {
+    return (
+      <div className="media-placeholder">
+        <Image size={28} />
+        <span>图片文件预览不可用</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="media-placeholder">
+      <FileVideo size={28} />
+      <span>{entry.preview || entry.title}</span>
+    </div>
+  )
+}
+
+function ClipCard({
+  entry,
+  selected,
+  copied,
+  menuOpen,
+  onSelect,
+  onCopy,
+  onToggleLock,
+  onOpenPath,
+  onToggleMenu
+}) {
+  const { Icon, label, className } = typeMeta(entry.type)
+  const cardRef = React.useRef(null)
+
+  useEffect(() => {
+    if (selected) cardRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [selected])
+
+  return (
+    <article
+      ref={cardRef}
+      className={`clip-card ${selected ? 'is-selected' : ''} ${entry.locked ? 'is-locked' : ''}`}
+      onMouseEnter={() => onSelect(entry.id)}
+      onClick={() => onCopy(entry.id)}
+    >
+      <button
+        className={`card-more ${menuOpen ? 'is-open' : ''}`}
+        title="更多操作"
+        onClick={(event) => {
+          event.stopPropagation()
+          onToggleMenu(entry.id)
+        }}
+      >
+        <MoreHorizontal size={18} />
+      </button>
+
+      {menuOpen ? (
+        <div className="card-menu" onClick={(event) => event.stopPropagation()}>
+          <button onClick={() => onToggleLock(entry.id)}>
+            {entry.locked ? <Unlock size={14} /> : <Lock size={14} />}
+            {entry.locked ? '取消锁定' : '锁定保留'}
+          </button>
+          <button onClick={() => onCopy(entry.id)}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? '已粘贴' : '粘贴并隐藏'}
+          </button>
+          {entry.files?.[0]?.path ? (
+            <button onClick={() => onOpenPath(entry.files[0].path)}>
+              <FolderOpen size={14} />
+              打开所在文件夹
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="card-kicker">
+        <span className={`type-pill ${className}`}>
+          <Icon size={12} />
+          {label}
+        </span>
+        {copied ? <span className="copied-flag">已粘贴</span> : null}
+      </div>
+
+      <CardBody entry={entry} />
+      <FileList files={entry.files} onOpenPath={onOpenPath} />
+    </article>
+  )
+}
+
+function ClipBoard({ entries, selectedId, copiedId, menuId, onSelect, onCopy, onToggleLock, onOpenPath, onToggleMenu }) {
+  if (!entries.length) {
     return (
       <section className="detail-empty">
         <Archive size={34} />
@@ -198,58 +315,23 @@ function Detail({ entry, copied, onCopy, onOpenPath, onToggleLock }) {
     )
   }
 
-  const { Icon, label, className } = typeMeta(entry.type)
-  const mediaSrc = primaryMedia(entry)
-
   return (
-    <>
-      <div className="detail-head">
-        <div>
-          <span className={`type-pill ${className}`}>
-            <Icon size={14} />
-            {label}
-          </span>
-          <h1>{entry.title}</h1>
-          <p>{formatFullTime(entry.createdAt)} · {entry.source || '系统剪贴板'}</p>
-        </div>
-        <div className="detail-actions">
-          <button
-            className={`lock-action ${entry.locked ? 'is-locked' : ''}`}
-            title={entry.locked ? '取消锁定' : '锁定后超过两天也不清除'}
-            onClick={() => onToggleLock(entry.id)}
-          >
-            {entry.locked ? <Lock size={16} /> : <Unlock size={16} />}
-            {entry.locked ? '已锁定' : '锁定保留'}
-          </button>
-          <button className="primary-action" onClick={() => onCopy(entry.id)}>
-            {copied ? <Check size={16} /> : <Copy size={16} />}
-            {copied ? '已复制' : '复制并隐藏'}
-          </button>
-        </div>
-      </div>
-
-      <div className={`preview-surface ${entry.type}`}>
-        {entry.type === 'text' ? (
-          <pre>{entry.text}</pre>
-        ) : entry.type === 'image' && mediaSrc ? (
-          <img src={mediaSrc} alt={entry.title} />
-        ) : entry.type === 'video' && mediaSrc ? (
-          <video src={mediaSrc} controls preload="metadata" />
-        ) : entry.type === 'image' ? (
-          <div className="media-placeholder">
-            <Image size={36} />
-            <span>图片文件预览不可用</span>
-          </div>
-        ) : (
-          <div className="media-placeholder">
-            <FileVideo size={36} />
-            <span>{entry.preview || entry.title}</span>
-          </div>
-        )}
-      </div>
-
-      <FileList files={entry.files} onOpenPath={onOpenPath} />
-    </>
+    <div className="clip-list">
+      {entries.map((entry) => (
+        <ClipCard
+          key={entry.id}
+          entry={entry}
+          selected={selectedId === entry.id}
+          copied={copiedId === entry.id}
+          menuOpen={menuId === entry.id}
+          onSelect={onSelect}
+          onCopy={onCopy}
+          onToggleLock={onToggleLock}
+          onOpenPath={onOpenPath}
+          onToggleMenu={onToggleMenu}
+        />
+      ))}
+    </div>
   )
 }
 
@@ -261,6 +343,7 @@ function App() {
   const [query, setQuery] = useState('')
   const [privacyLocked, setPrivacyLocked] = useState(false)
   const [copiedId, setCopiedId] = useState('')
+  const [menuId, setMenuId] = useState('')
 
   useEffect(() => {
     if (!api) return undefined
@@ -291,6 +374,13 @@ function App() {
       disposeDock()
     }
   }, [])
+
+  useEffect(() => {
+    if (!menuId) return undefined
+    const close = () => setMenuId('')
+    window.addEventListener('click', close)
+    return () => window.removeEventListener('click', close)
+  }, [menuId])
 
   const visibleEntries = useMemo(() => {
     const normalized = entries.map(normalizeEntry)
@@ -333,11 +423,16 @@ function App() {
   }
 
   async function copyEntry(id) {
+    setMenuId('')
     if (!api) return
     const ok = await api.copyEntry(id)
     if (!ok) return
     setCopiedId(id)
     window.setTimeout(() => setCopiedId(''), 1100)
+  }
+
+  function toggleMenu(id) {
+    setMenuId((current) => (current === id ? '' : id))
   }
 
   async function toggleLock(id) {
@@ -444,7 +539,7 @@ function App() {
             <aside className="timeline">
               <div className="section-title">
                 <span>时间轴</span>
-                <small>{paused ? '已暂停' : '悬停预览 · 点击复制'}</small>
+                <small>{paused ? '已暂停' : '悬停预览 · 点击粘贴'}</small>
               </div>
               <div className="timeline-list">
                 {visibleEntries.length ? (
@@ -465,12 +560,20 @@ function App() {
             </aside>
 
             <section className="detail-pane">
-              <Detail
-                entry={selected}
-                copied={copiedId === selected?.id}
+              <div className="section-title">
+                <span>内容</span>
+                <small>点击卡片粘贴到鼠标位置</small>
+              </div>
+              <ClipBoard
+                entries={visibleEntries}
+                selectedId={selected?.id}
+                copiedId={copiedId}
+                menuId={menuId}
+                onSelect={setSelectedId}
                 onCopy={copyEntry}
-                onOpenPath={openPath}
                 onToggleLock={toggleLock}
+                onOpenPath={openPath}
+                onToggleMenu={toggleMenu}
               />
             </section>
           </section>
