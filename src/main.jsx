@@ -451,18 +451,18 @@ function App() {
           <section className="status-band">
             <div>
               <p className="eyebrow">LOCAL CLIPBOARD</p>
-              <h2>最近两天复制过的内容</h2>
+              <h2>复制记录</h2>
             </div>
             <button className={`record-toggle ${paused ? 'paused' : ''}`} onClick={togglePaused}>
               {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? '继续记录' : '暂停记录'}
+              {paused ? '继续' : '暂停'}
             </button>
           </section>
 
           <section className="toolbar">
             <label className="search-field">
               <Search size={16} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索文本、文件名或来源" />
+              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索" />
             </label>
             <div className="metrics">
               <span>{counts.total} 条</span>
@@ -473,7 +473,7 @@ function App() {
             <aside className="timeline">
               <div className="section-title">
                 <span>时间轴</span>
-                <small>{paused ? '已暂停' : '点击粘贴'}</small>
+                <small>{paused ? '已暂停' : `${counts.total} 条`}</small>
               </div>
               <div className="timeline-list">
                 {visibleEntries.length ? (
@@ -501,7 +501,7 @@ function App() {
           <footer className="bottom-bar">
             <span>
               <ShieldCheck size={15} />
-              本机保存，超过两天自动清理，锁定的记录会保留
+              本机保存 · 两天清理
             </span>
             <button onClick={clearEntries}>
               <Trash2 size={14} />

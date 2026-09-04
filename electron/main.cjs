@@ -16,9 +16,9 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 
 const MAX_AGE = 48 * 60 * 60 * 1000
-const PANEL_WIDTH_RATIO = 1 / 6
+const PANEL_WIDTH_RATIO = 1 / 12
 const PANEL_HEIGHT_RATIO = 1 / 3
-const MIN_PANEL_WIDTH = 320
+const MIN_PANEL_WIDTH = 180
 const MIN_PANEL_HEIGHT = 300
 const EDGE_PEEK = 6
 const EDGE_HIT = 12
