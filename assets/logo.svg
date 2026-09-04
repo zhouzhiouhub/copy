@@ -1,44 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1528" height="417" viewBox="0 0 1527.86 417.04">
-  <title>kinolin</title>
-  <desc>Geometric K symbol and path-based kinolin wordmark. No fonts are required for the mark or wordmark.</desc>
-  <defs>
-    <linearGradient id="kinolin-gradient" x1="74.84" y1="58" x2="402.86" y2="359.04" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#19D9FF"/>
-      <stop offset="0.48" stop-color="#1677FF"/>
-      <stop offset="1" stop-color="#7B4DFF"/>
-    </linearGradient>
-  </defs>
-
-  <g id="kinolin-symbol">
-    <path id="k-stem" d="M 158.87 82.18 Q 167.14 58 192.7 58.43 L 235.3 59.14 Q 252.34 59.42 246.33 75.37 L 214.66 159.46 Q 211.16 168.76 204.69 176.31 L 87.78 312.71 Q 74.84 327.8 81.27 308.99 Z" fill="url(#kinolin-gradient)"/>
-    <path id="k-diagonal" d="M 273.32 107.45 Q 282.16 96.34 296.35 95.79 L 368.8 92.96 Q 391.5 92.08 376.8 109.4 L 179.59 341.79 Q 168.56 354.78 151.52 354.51 L 97.56 353.67 Q 77.68 353.36 90.06 337.8 Z" fill="url(#kinolin-gradient)"/>
-    <path id="k-lower" d="M 288.74 237.44 Q 297.78 228.4 305.79 238.36 L 388.62 341.34 Q 402.86 359.04 380.14 359.04 L 309.14 359.04 Q 292.1 359.04 281.49 345.71 L 242.91 297.24 Q 236.72 289.46 243.75 282.43 Z" fill="url(#kinolin-gradient)"/>
-    <path id="spark" d="M 421.32 105.57 Q 424.73 119.91 436.23 123.32 Q 424.73 126.73 421.32 141.07 Q 417.91 126.73 406.41 123.32 Q 417.91 119.91 421.32 105.57 Z" fill="#FFFFFF"/>
-  </g>
-
-  <g id="kinolin-wordmark" fill="#FFFFFF">
-    <g id="letter-k">
-      <path d="M533.99 149.96H588.49V257.44L633.5 202.88H688L642.99 257.44L693.46 342H638.96L588.49 257.44V342H533.99Z"/>
-    </g>
-    <g id="letter-i">
-      <path d="M708.36 202.88H761.67V342H708.36Z"/>
-    </g>
-    <g id="letter-n">
-      <path d="M789.19 202.88H838.83V225.54Q849.97 211.66 861.37 205.7Q872.76 199.74 889.14 199.74Q911.28 199.74 923.79 212.9Q936.3 226.07 936.3 253.58V342H882.72V265.5Q882.72 252.4 877.87 246.96Q873.02 241.53 864.25 241.53Q854.55 241.53 848.53 248.86Q842.5 256.2 842.5 275.19V342H789.19Z"/>
-    </g>
-    <g id="letter-o">
-      <path d="M955.03 272.83Q955.03 241 976.52 220.37Q998 199.74 1034.55 199.74Q1076.34 199.74 1097.69 223.97Q1114.85 243.49 1114.85 272.05Q1114.85 304.14 1093.56 324.64Q1072.28 345.14 1034.68 345.14Q1001.15 345.14 980.45 328.11Q955.03 307.02 955.03 272.83Z M1008.48 272.7Q1008.48 291.3 1016.01 300.21Q1023.55 309.12 1034.94 309.12Q1046.47 309.12 1053.87 300.34Q1061.27 291.57 1061.27 272.18Q1061.27 254.1 1053.81 245.26Q1046.34 236.42 1035.34 236.42Q1023.68 236.42 1016.08 245.39Q1008.48 254.36 1008.48 272.7Z"/>
-    </g>
-    <g id="letter-l">
-      <path d="M1135.82 149.96H1189.26V342H1135.82Z"/>
-    </g>
-    <g id="letter-i-2">
-      <path d="M1218.74 202.88H1272.06V342H1218.74Z"/>
-    </g>
-    <g id="letter-n-2">
-      <path d="M1299.57 202.88H1349.22V225.54Q1360.36 211.66 1371.75 205.7Q1383.15 199.74 1399.52 199.74Q1421.66 199.74 1434.17 212.9Q1446.68 226.07 1446.68 253.58V342H1393.11V265.5Q1393.11 252.4 1388.26 246.96Q1383.41 241.53 1374.64 241.53Q1364.94 241.53 1358.92 248.86Q1352.89 256.2 1352.89 275.19V342H1299.57Z"/>
-    </g>
-    <circle id="idot-1" cx="735.01" cy="168.1" r="22.9" fill="#19D9FF"/>
-    <circle id="idot-2" cx="1245.4" cy="168.1" r="22.9" fill="#19D9FF"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Clipboard Atlas</title>
+  <desc id="desc">A clipboard with a timeline mark for Clipboard Atlas.</desc>
+  <rect width="256" height="256" rx="56" fill="#23332d"/>
+  <rect x="61" y="55" width="134" height="158" rx="22" fill="#f9faf7"/>
+  <rect x="88" y="38" width="80" height="42" rx="17" fill="#f4d25f"/>
+  <rect x="82" y="105" width="92" height="10" rx="5" fill="#6b7a72"/>
+  <rect x="82" y="132" width="66" height="10" rx="5" fill="#6b7a72"/>
+  <rect x="82" y="159" width="78" height="10" rx="5" fill="#6b7a72"/>
+  <circle cx="185" cy="107" r="9" fill="#6ac39c"/>
+  <circle cx="185" cy="146" r="9" fill="#7aa7d9"/>
+  <circle cx="185" cy="185" r="9" fill="#f08a70"/>
+  <path d="M185 116v21M185 155v21" stroke="#d8e1dc" stroke-width="6" stroke-linecap="round"/>
 </svg>
