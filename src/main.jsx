@@ -31,7 +31,7 @@ const demoEntries = [
   {
     id: 'demo-text',
     type: 'text',
-    title: '项目发布页文案',
+    title: '',
     preview: '把最近两天复制过的文本、图片和视频都沉到一个安静的侧边栏里。',
     text: '把最近两天复制过的文本、图片和视频都沉到一个安静的侧边栏里。',
     createdAt: Date.now() - 1000 * 60 * 8,
@@ -110,13 +110,13 @@ function typeMeta(type) {
 
 function normalizeEntry(entry) {
   const files = Array.isArray(entry.files) ? entry.files : []
-  const isClipboardImage = entry.type === 'image' && files.length === 0
+  const hideTitle = entry.type === 'text' || (entry.type === 'image' && files.length === 0)
 
   return {
     ...entry,
     text: entry.text ?? entry.value ?? entry.preview ?? '',
     html: entry.html || '',
-    title: isClipboardImage ? '' : entry.title || entry.preview || '剪贴板内容',
+    title: hideTitle ? '' : entry.title || entry.preview || '剪贴板内容',
     files,
     locked: Boolean(entry.locked)
   }
@@ -250,13 +250,7 @@ function CardBody({ entry }) {
 
   if (entry.type === 'video' && mediaSrc) {
     return (
-      <video
-        className="timeline-media"
-        src={mediaSrc}
-        controls
-        preload="metadata"
-        onClick={(event) => event.stopPropagation()}
-      />
+      <video className="timeline-media" src={mediaSrc} controls preload="metadata" onClick={(event) => event.stopPropagation()} />
     )
   }
 
@@ -471,10 +465,6 @@ function App() {
 
           <section className="board">
             <aside className="timeline">
-              <div className="section-title">
-                <span>时间轴</span>
-                <small>{paused ? '已暂停' : `${counts.total} 条`}</small>
-              </div>
               <div className="timeline-list">
                 {visibleEntries.length ? (
                   visibleEntries.map((entry) => (

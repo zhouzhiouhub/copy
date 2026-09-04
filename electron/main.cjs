@@ -748,11 +748,10 @@ function buildImageEntry(snapshot) {
 // 构建文本条目
 function buildTextEntry(snapshot) {
   const text = snapshot.text || ''
-  const firstLine = text.split(/\r?\n/).find((line) => line.trim()) || text
 
   return {
     type: 'text',
-    title: firstLine.slice(0, 48) || '文本内容',
+    title: '',
     preview: text,
     text,
     html: snapshot.html || '',
