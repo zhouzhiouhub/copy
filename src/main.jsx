@@ -450,16 +450,7 @@ function App() {
         <>
           <section className="status-band">
             <div>
-              <p className="eyebrow">LOCAL CLIPBOARD</p>
-              <h2>复制记录</h2>
-            </div>
-            <button className={`record-toggle ${paused ? 'paused' : ''}`} onClick={togglePaused}>
-              {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? '继续' : '暂停'}
-            </button>
-          </section>
-
-          <section className="toolbar">
+            <section className="toolbar">
             <label className="search-field">
               <Search size={16} />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索" />
@@ -467,6 +458,12 @@ function App() {
             <div className="metrics">
               <span>{counts.total} 条</span>
             </div>
+          </section>
+            </div>
+            <button className={`record-toggle ${paused ? 'paused' : ''}`} onClick={togglePaused}>
+              {paused ? <Play size={15} /> : <Pause size={15} />}
+              {paused ? '继续' : '暂停'}
+            </button>
           </section>
 
           <section className="board">
