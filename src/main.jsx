@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
-  Archive,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -20,7 +19,6 @@ import {
   Play,
   Power,
   Search,
-  ShieldCheck,
   Trash2,
   Unlock,
   X
@@ -405,29 +403,31 @@ function App() {
       <header className="topbar">
         <div className="brand">
           <span className="brand-mark">
-            <Clipboard size={18} />
-          </span>
-          <span>
-            <strong>复制档案</strong>
-            <small>48 小时剪贴板</small>
+            <Clipboard size={16} />
           </span>
         </div>
 
         <div className="window-actions">
+          <button title={paused ? '继续记录' : '暂停记录'} className={paused ? 'is-paused' : ''} onClick={togglePaused}>
+            {paused ? <Play size={15} /> : <Pause size={15} />}
+          </button>
+          <button title="清空未锁定记录" className="is-danger" onClick={clearEntries}>
+            <Trash2 size={15} />
+          </button>
           <button title={dock.side === 'left' ? '停靠到右侧' : '停靠到左侧'} onClick={switchSide}>
-            {dock.side === 'left' ? <ChevronRight size={17} /> : <ChevronLeft size={17} />}
+            {dock.side === 'left' ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
           <button title={dock.pinned ? '取消固定展开' : '固定展开'} onClick={togglePinned}>
-            {dock.pinned ? <PinOff size={16} /> : <Pin size={16} />}
+            {dock.pinned ? <PinOff size={15} /> : <Pin size={15} />}
           </button>
           <button title={privacyLocked ? '显示内容' : '隐藏内容'} onClick={() => setPrivacyLocked(!privacyLocked)}>
-            {privacyLocked ? <Unlock size={16} /> : <Lock size={16} />}
+            {privacyLocked ? <Unlock size={15} /> : <Lock size={15} />}
           </button>
           <button title="收起到边缘" onClick={() => api?.collapseDock()}>
-            <X size={17} />
+            <X size={16} />
           </button>
           <button title="退出程序" onClick={() => api?.quit()}>
-            <Power size={16} />
+            <Power size={15} />
           </button>
         </div>
       </header>
@@ -447,21 +447,11 @@ function App() {
       ) : (
         <>
           <section className="status-band">
-            <div>
-            <section className="toolbar">
             <label className="search-field">
               <Search size={16} />
               <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="搜索" />
+              <span className="search-meta">{counts.total}条 · 2天</span>
             </label>
-            <div className="metrics">
-              <span>{counts.total} 条</span>
-            </div>
-          </section>
-            </div>
-            <button className={`record-toggle ${paused ? 'paused' : ''}`} onClick={togglePaused}>
-              {paused ? <Play size={15} /> : <Pause size={15} />}
-              {paused ? '继续' : '暂停'}
-            </button>
           </section>
 
           <section className="board">
@@ -489,16 +479,6 @@ function App() {
             </aside>
           </section>
 
-          <footer className="bottom-bar">
-            <span>
-              <ShieldCheck size={15} />
-              本机保存 · 两天清理
-            </span>
-            <button onClick={clearEntries}>
-              <Trash2 size={14} />
-              清空
-            </button>
-          </footer>
         </>
       )}
     </main>
