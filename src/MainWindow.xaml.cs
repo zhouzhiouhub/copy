@@ -77,6 +77,7 @@ namespace ClipboardAtlas
         public string PinTip => store.Dock.Pinned ? "取消固定展开" : "固定展开";
         public string PrivacyIcon => privacyLocked ? "\uE785" : "\uE72E";
         public string PrivacyTip => privacyLocked ? "显示内容" : "隐藏内容";
+        public string VersionText => AppVersion.Display;
 
         public bool AutoStart
         {

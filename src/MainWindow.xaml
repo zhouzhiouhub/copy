@@ -521,7 +521,12 @@
               </DockPanel>
             </Border>
 
-            <Button Style="{StaticResource WideDangerButton}" Click="Quit" ToolTip="退出程序" Margin="0,4,0,0">
+            <DockPanel Margin="2,2,2,10">
+              <TextBlock Text="版本" FontSize="11" Foreground="#8A968F" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding VersionText}" FontSize="11" Foreground="#65736C" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+            </DockPanel>
+
+            <Button Style="{StaticResource WideDangerButton}" Click="Quit" ToolTip="退出程序" Margin="0,0,0,0">
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <TextBlock Text="&#xE7E8;" FontFamily="{StaticResource IconFont}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
                 <TextBlock Text="退出程序" FontSize="12" VerticalAlignment="Center"/>

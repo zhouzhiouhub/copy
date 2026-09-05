@@ -2,6 +2,10 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
+powershell -NoProfile -ExecutionPolicy Bypass -File "$root\tools\gen-version.ps1" `
+    -OutFile "$root\src\VersionInfo.g.cs" `
+    -PropsFile "$root\obj\GitVersion.g.props"
+
 if (Test-Path "$root\release") {
     Remove-Item "$root\release" -Recurse -Force
 }
