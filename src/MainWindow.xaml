@@ -506,8 +506,7 @@
             <Border Background="#F7F8F5" CornerRadius="8" Padding="10,8" Margin="0,0,0,8">
               <DockPanel>
                 <StackPanel>
-                  <TextBlock Text="开机自动启动" FontSize="12" Foreground="#18221F"/>
-                  <TextBlock Text="登录 Windows 后自动运行" FontSize="10" Foreground="#69766F" Margin="0,2,0,0"/>
+                  <TextBlock Text="开机自启" FontSize="12" Foreground="#18221F"/>
                 </StackPanel>
                 <CheckBox IsChecked="{Binding AutoStart, Mode=TwoWay}" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
               </DockPanel>
@@ -517,7 +516,6 @@
               <DockPanel>
                 <StackPanel>
                   <TextBlock Text="显示任务栏图标" FontSize="12" Foreground="#18221F"/>
-                  <TextBlock Text="默认只保留托盘图标" FontSize="10" Foreground="#69766F" Margin="0,2,0,0"/>
                 </StackPanel>
                 <CheckBox IsChecked="{Binding ShowInTaskbarSetting, Mode=TwoWay}" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
               </DockPanel>
