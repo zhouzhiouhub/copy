@@ -236,7 +236,7 @@ namespace ClipboardAtlas
         void ClearEntries(object sender, RoutedEventArgs e)
         {
             if (!store.Entries.Any(entry => !entry.Locked)) return;
-            if (MessageBox.Show(this, "清空未锁定的复制记录？已锁定的记录会保留。", "kinolincopy", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+            if (MessageBox.Show(this, "清空未锁定的复制记录？已锁定的记录会保留。", "Kinolincopy", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
                 return;
             store.ClearUnlocked();
         }

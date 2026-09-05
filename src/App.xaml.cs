@@ -6,8 +6,8 @@ namespace ClipboardAtlas
 {
     public partial class App : Application
     {
-        public const string MutexName = "Local\\kinolincopy.SingleInstance.v1";
-        public const string ActivateEventName = "Local\\kinolincopy.Activate.v1";
+        public const string MutexName = "Local\\Kinolincopy.SingleInstance.v1";
+        public const string ActivateEventName = "Local\\Kinolincopy.Activate.v1";
 
         Mutex mutex;
         EventWaitHandle activateEvent;
@@ -43,7 +43,7 @@ namespace ClipboardAtlas
             activateWatcher = new Thread(WatchActivate)
             {
                 IsBackground = true,
-                Name = "kinolincopy.ActivateWatcher"
+                Name = "Kinolincopy.ActivateWatcher"
             };
             activateWatcher.Start();
         }

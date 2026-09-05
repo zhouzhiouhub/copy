@@ -6,10 +6,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <AssemblyName>kinolincopy</AssemblyName>
+    <AssemblyName>Kinolincopy</AssemblyName>
     <RootNamespace>ClipboardAtlas</RootNamespace>
-    <Product>kinolincopy</Product>
-    <Description>kinolincopy — 本机 Windows 剪贴板历史看板</Description>
+    <Product>Kinolincopy</Product>
+    <Description>Kinolincopy — 本机 Windows 剪贴板历史看板</Description>
     <Version>0.0.0</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>assets\app.ico</ApplicationIcon>
@@ -34,7 +34,7 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="assets\logo64.png" />
-    <EmbeddedResource Include="assets\app.ico" LogicalName="kinolincopy.app.ico" />
+    <EmbeddedResource Include="assets\app.ico" LogicalName="Kinolincopy.app.ico" />
   </ItemGroup>
   <Target Name="GenerateGitVersion" BeforeTargets="PrepareForBuild">
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\tools\gen-version.ps1&quot; -OutFile &quot;$(MSBuildProjectDirectory)\src\VersionInfo.g.cs&quot; -PropsFile &quot;$(MSBuildProjectDirectory)\obj\GitVersion.g.props&quot;" />

@@ -22,7 +22,7 @@ namespace ClipboardAtlas
 
         public HistoryStore()
         {
-            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "kinolincopy");
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Kinolincopy");
             Directory.CreateDirectory(root);
             MigrateLegacyData(root);
             imageDir = Path.Combine(root, "images");

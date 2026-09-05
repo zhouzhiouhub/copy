@@ -27,7 +27,7 @@ namespace ClipboardAtlas
 
             notify = new NotifyIcon
             {
-                Text = "kinolincopy",
+                Text = "Kinolincopy",
                 Icon = LoadIcon(),
                 Visible = true,
                 ContextMenuStrip = menu
@@ -53,7 +53,7 @@ namespace ClipboardAtlas
             }
 
             var assembly = Assembly.GetExecutingAssembly();
-            using (var stream = assembly.GetManifestResourceStream("kinolincopy.app.ico"))
+            using (var stream = assembly.GetManifestResourceStream("Kinolincopy.app.ico"))
             {
                 if (stream != null)
                 {

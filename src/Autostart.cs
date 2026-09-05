@@ -9,7 +9,7 @@ namespace ClipboardAtlas
     static class Autostart
     {
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        const string ValueName = "kinolincopy";
+        const string ValueName = "Kinolincopy";
         static readonly string[] LegacyValueNames = { "ClipboardAtlas", "复制档案" };
 
         public static string ExePath
@@ -19,11 +19,11 @@ namespace ClipboardAtlas
                 try
                 {
                     return Process.GetCurrentProcess().MainModule?.FileName
-                        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kinolincopy.exe");
+                        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Kinolincopy.exe");
                 }
                 catch
                 {
-                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kinolincopy.exe");
+                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Kinolincopy.exe");
                 }
             }
         }
@@ -59,7 +59,7 @@ namespace ClipboardAtlas
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法更新开机自启设置：\n" + ex.Message, "kinolincopy", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("无法更新开机自启设置：\n" + ex.Message, "Kinolincopy", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }

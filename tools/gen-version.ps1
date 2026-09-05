@@ -52,4 +52,4 @@ if ($PropsFile) {
 "@ | Set-Content -Path $PropsFile -Encoding UTF8
 }
 
-Write-Host "kinolincopy version $version (commits=$count)"
+Write-Host "Kinolincopy version $version (commits=$count)"
