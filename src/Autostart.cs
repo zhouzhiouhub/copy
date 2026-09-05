@@ -1,0 +1,68 @@
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Windows;
+using Microsoft.Win32;
+
+namespace ClipboardAtlas
+{
+    static class Autostart
+    {
+        const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        const string ValueName = "ClipboardAtlas";
+
+        public static string ExePath
+        {
+            get
+            {
+                try
+                {
+                    return Process.GetCurrentProcess().MainModule?.FileName
+                        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "复制档案.exe");
+                }
+                catch
+                {
+                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "复制档案.exe");
+                }
+            }
+        }
+
+        public static bool IsEnabled()
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RunKey, false))
+                {
+                    var value = key?.GetValue(ValueName) as string;
+                    return !string.IsNullOrWhiteSpace(value);
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public static void SetEnabled(bool enabled)
+        {
+            try
+            {
+                using (var key = Registry.CurrentUser.OpenSubKey(RunKey, true) ?? Registry.CurrentUser.CreateSubKey(RunKey))
+                {
+                    if (key == null) return;
+                    if (enabled) key.SetValue(ValueName, "\"" + ExePath + "\"");
+                    else key.DeleteValue(ValueName, false);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("无法更新开机自启设置：\n" + ex.Message, "复制档案", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        public static void EnsureDefaultEnabled()
+        {
+            if (!IsEnabled()) SetEnabled(true);
+        }
+    }
+}

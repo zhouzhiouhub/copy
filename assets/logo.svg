@@ -1,14 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
-  <title id="title">Clipboard Atlas</title>
-  <desc id="desc">A clipboard with a timeline mark for Clipboard Atlas.</desc>
-  <rect width="256" height="256" rx="56" fill="#23332d"/>
-  <rect x="61" y="55" width="134" height="158" rx="22" fill="#f9faf7"/>
-  <rect x="88" y="38" width="80" height="42" rx="17" fill="#f4d25f"/>
-  <rect x="82" y="105" width="92" height="10" rx="5" fill="#6b7a72"/>
-  <rect x="82" y="132" width="66" height="10" rx="5" fill="#6b7a72"/>
-  <rect x="82" y="159" width="78" height="10" rx="5" fill="#6b7a72"/>
-  <circle cx="185" cy="107" r="9" fill="#6ac39c"/>
-  <circle cx="185" cy="146" r="9" fill="#7aa7d9"/>
-  <circle cx="185" cy="185" r="9" fill="#f08a70"/>
-  <path d="M185 116v21M185 155v21" stroke="#d8e1dc" stroke-width="6" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="29.88 -20.68 458.41 458.41">
+  <title>kinolin symbol</title>
+  <defs>
+    <linearGradient id="kinolin-gradient" x1="74.84" y1="58" x2="402.86" y2="359.04" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19D9FF"/>
+      <stop offset="0.48" stop-color="#1677FF"/>
+      <stop offset="1" stop-color="#7B4DFF"/>
+    </linearGradient>
+  </defs>
+  <rect x="29.88" y="-20.68" width="458.41" height="458.41" rx="100.85" fill="#08152D"/>
+  <g id="kinolin-symbol">
+    <path id="k-stem" d="M 158.87 82.18 Q 167.14 58 192.7 58.43 L 235.3 59.14 Q 252.34 59.42 246.33 75.37 L 214.66 159.46 Q 211.16 168.76 204.69 176.31 L 87.78 312.71 Q 74.84 327.8 81.27 308.99 Z" fill="url(#kinolin-gradient)"/>
+    <path id="k-diagonal" d="M 273.32 107.45 Q 282.16 96.34 296.35 95.79 L 368.8 92.96 Q 391.5 92.08 376.8 109.4 L 179.59 341.79 Q 168.56 354.78 151.52 354.51 L 97.56 353.67 Q 77.68 353.36 90.06 337.8 Z" fill="url(#kinolin-gradient)"/>
+    <path id="k-lower" d="M 288.74 237.44 Q 297.78 228.4 305.79 238.36 L 388.62 341.34 Q 402.86 359.04 380.14 359.04 L 309.14 359.04 Q 292.1 359.04 281.49 345.71 L 242.91 297.24 Q 236.72 289.46 243.75 282.43 Z" fill="url(#kinolin-gradient)"/>
+    <path id="spark" d="M 421.32 105.57 Q 424.73 119.91 436.23 123.32 Q 424.73 126.73 421.32 141.07 Q 417.91 126.73 406.41 123.32 Q 417.91 119.91 421.32 105.57 Z" fill="#FFFFFF"/>
+  </g>
 </svg>

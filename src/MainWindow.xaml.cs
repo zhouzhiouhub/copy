@@ -24,8 +24,10 @@ namespace ClipboardAtlas
         readonly DispatcherTimer pruneTimer = new DispatcherTimer { Interval = TimeSpan.FromHours(1) };
         readonly DispatcherTimer copiedTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1100) };
         readonly ObservableCollection<ClipEntry> visible = new ObservableCollection<ClipEntry>();
+        TrayService tray;
         string query = "";
         bool privacyLocked;
+        bool settingsOpen;
         bool quitting;
         uint lastSequence;
         ClipEntry copiedEntry;
@@ -38,6 +40,7 @@ namespace ClipboardAtlas
             InitializeComponent();
             DataContext = this;
             store.Load();
+            ApplySettings(true);
             RefreshList();
             store.Changed += () => Dispatcher.Invoke(RefreshList);
             pollTimer.Tick += (_, __) => PollClipboard();
@@ -53,12 +56,14 @@ namespace ClipboardAtlas
                 if (copiedEntry != null) copiedEntry.IsCopied = false;
                 copiedEntry = null;
             };
-            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += (_, __) => Dispatcher.Invoke(() => dock.Apply(false));
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
+            tray = new TrayService(ActivateFromExternal, OpenSettings, RequestQuit);
         }
 
         public ObservableCollection<ClipEntry> VisibleEntries => visible;
         public string Query { get => query; set { query = value ?? ""; Raise(); RefreshList(); } }
         public bool PrivacyLocked { get => privacyLocked; set { privacyLocked = value; Raise(); RaiseAll(nameof(PrivacyIcon), nameof(PrivacyTip), nameof(EmptyVisible)); } }
+        public bool SettingsOpen { get => settingsOpen; set { settingsOpen = value; Raise(); } }
         public bool Paused => store.Paused;
         public bool Pinned => store.Dock.Pinned;
         public string DockSide => store.Dock.Side == "left" ? "left" : "right";
@@ -73,7 +78,61 @@ namespace ClipboardAtlas
         public string PrivacyIcon => privacyLocked ? "\uE785" : "\uE72E";
         public string PrivacyTip => privacyLocked ? "显示内容" : "隐藏内容";
 
+        public bool AutoStart
+        {
+            get => store.Settings.AutoStart;
+            set
+            {
+                if (store.Settings.AutoStart == value) return;
+                store.Settings.AutoStart = value;
+                Autostart.SetEnabled(value);
+                store.Save();
+                Raise();
+            }
+        }
+
+        public bool ShowInTaskbarSetting
+        {
+            get => store.Settings.ShowInTaskbar;
+            set
+            {
+                if (store.Settings.ShowInTaskbar == value) return;
+                store.Settings.ShowInTaskbar = value;
+                ShowInTaskbar = value;
+                store.Save();
+                Raise();
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
+
+        public void ActivateFromExternal()
+        {
+            if (quitting) return;
+            SettingsOpen = false;
+            Show();
+            if (IsIconicCompat()) NativeMethods.ShowWindow(NativeMethods.HandleOf(this), NativeMethods.SwRestore);
+            dock.SetExpanded(true, true);
+            Activate();
+            NativeMethods.SetForegroundWindow(NativeMethods.HandleOf(this));
+            RaiseDock();
+        }
+
+        void ApplySettings(bool syncAutostart)
+        {
+            ShowInTaskbar = store.Settings.ShowInTaskbar;
+            if (syncAutostart)
+            {
+                if (store.Settings.AutoStart) Autostart.SetEnabled(true);
+                else if (Autostart.IsEnabled()) Autostart.SetEnabled(false);
+            }
+            RaiseAll(nameof(AutoStart), nameof(ShowInTaskbarSetting));
+        }
+
+        void OnDisplaySettingsChanged(object sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() => dock.Apply(false));
+        }
 
         protected override void OnSourceInitialized(EventArgs e)
         {
@@ -101,6 +160,7 @@ namespace ClipboardAtlas
             if (!quitting)
             {
                 e.Cancel = true;
+                SettingsOpen = false;
                 dock.SetExpanded(false, true);
                 RaiseDock();
                 return;
@@ -113,12 +173,14 @@ namespace ClipboardAtlas
             pollTimer.Stop();
             pruneTimer.Stop();
             dock.Stop();
+            tray?.Dispose();
+            tray = null;
             if (hookSource != null)
             {
                 hookSource.RemoveHook(WndProc);
                 NativeMethods.RemoveClipboardFormatListener(hookSource.Handle);
             }
-            Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= (_, __) => { };
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             base.OnClosed(e);
         }
 
@@ -173,7 +235,7 @@ namespace ClipboardAtlas
         void ClearEntries(object sender, RoutedEventArgs e)
         {
             if (!store.Entries.Any(entry => !entry.Locked)) return;
-            if (MessageBox.Show(this, "清空未锁定的复制记录？已锁定的记录会保留。", "复制档案", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
+            if (MessageBox.Show(this, "清空未锁定的复制记录？已锁定的记录会保留。", "kinolincopy", MessageBoxButton.OKCancel, MessageBoxImage.Question) != MessageBoxResult.OK)
                 return;
             store.ClearUnlocked();
         }
@@ -195,15 +257,51 @@ namespace ClipboardAtlas
             PrivacyLocked = !PrivacyLocked;
         }
 
+        void ToggleSettings(object sender, RoutedEventArgs e)
+        {
+            SettingsOpen = !SettingsOpen;
+            if (SettingsOpen) dock.SetExpanded(true, true);
+        }
+
+        void OpenSettings()
+        {
+            ActivateFromExternal();
+            SettingsOpen = true;
+        }
+
+        void CloseSettings(object sender, RoutedEventArgs e)
+        {
+            SettingsOpen = false;
+        }
+
+        void CloseSettingsBackdrop(object sender, MouseButtonEventArgs e)
+        {
+            if (e.OriginalSource == sender) SettingsOpen = false;
+        }
+
+        void SettingsCardClick(object sender, MouseButtonEventArgs e)
+        {
+            e.Handled = true;
+        }
+
         void Collapse(object sender, RoutedEventArgs e)
         {
+            SettingsOpen = false;
             dock.SetExpanded(false, true);
             RaiseDock();
         }
 
         void Quit(object sender, RoutedEventArgs e)
         {
+            RequestQuit();
+        }
+
+        void RequestQuit()
+        {
             quitting = true;
+            SettingsOpen = false;
+            tray?.Dispose();
+            tray = null;
             dock.Stop();
             Application.Current.Shutdown();
         }
@@ -313,6 +411,7 @@ namespace ClipboardAtlas
             copiedEntry = entry;
             copiedTimer.Stop();
             copiedTimer.Start();
+            SettingsOpen = false;
             dock.HideAfterCopy();
             RaiseDock();
             await Task.Delay(160);
@@ -341,6 +440,12 @@ namespace ClipboardAtlas
             return null;
         }
 
+        bool IsIconicCompat()
+        {
+            var hwnd = NativeMethods.HandleOf(this);
+            return hwnd != IntPtr.Zero && NativeMethods.IsIconic(hwnd);
+        }
+
         void RaiseAll(params string[] names)
         {
             foreach (var name in names)
@@ -356,6 +461,7 @@ namespace ClipboardAtlas
         {
             base.OnPreviewMouseDown(e);
             if (FindParent<Button>(e.OriginalSource as DependencyObject) != null) return;
+            if (FindParent<CheckBox>(e.OriginalSource as DependencyObject) != null) return;
             foreach (var item in store.Entries) item.IsMenuOpen = false;
         }
     }

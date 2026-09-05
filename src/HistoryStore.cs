@@ -16,6 +16,7 @@ namespace ClipboardAtlas
         public List<ClipEntry> Entries { get; private set; } = new List<ClipEntry>();
         public bool Paused { get; set; }
         public DockState Dock { get; private set; } = new DockState();
+        public AppSettings Settings { get; private set; } = new AppSettings();
 
         public event Action Changed;
 
@@ -43,6 +44,7 @@ namespace ClipboardAtlas
                     Entries = store.Entries ?? new List<ClipEntry>();
                     Paused = store.Paused;
                     Dock = store.Dock ?? new DockState();
+                    Settings = store.Settings ?? new AppSettings();
                     if (Dock.Side != "left") Dock.Side = "right";
                     Dock.VerticalRatio = Clamp(Dock.VerticalRatio, 0, 1);
                     Dock.Expanded = Dock.Pinned;
@@ -63,7 +65,8 @@ namespace ClipboardAtlas
             {
                 Entries = Entries,
                 Paused = Paused,
-                Dock = Dock
+                Dock = Dock,
+                Settings = Settings
             };
             Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? ".");
             using (var stream = File.Create(filePath))

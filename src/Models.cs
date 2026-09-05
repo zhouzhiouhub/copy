@@ -19,6 +19,19 @@ namespace ClipboardAtlas
 
         [DataMember(Name = "dock")]
         public DockState Dock { get; set; } = new DockState();
+
+        [DataMember(Name = "settings")]
+        public AppSettings Settings { get; set; } = new AppSettings();
+    }
+
+    [DataContract]
+    public sealed class AppSettings
+    {
+        [DataMember(Name = "autoStart")]
+        public bool AutoStart { get; set; } = true;
+
+        [DataMember(Name = "showInTaskbar")]
+        public bool ShowInTaskbar { get; set; }
     }
 
     [DataContract]
