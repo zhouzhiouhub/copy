@@ -9,7 +9,8 @@ namespace ClipboardAtlas
     static class Autostart
     {
         const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
-        const string ValueName = "ClipboardAtlas";
+        const string ValueName = "kinolincopy";
+        static readonly string[] LegacyValueNames = { "ClipboardAtlas", "复制档案" };
 
         public static string ExePath
         {
@@ -18,11 +19,11 @@ namespace ClipboardAtlas
                 try
                 {
                     return Process.GetCurrentProcess().MainModule?.FileName
-                        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "复制档案.exe");
+                        ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kinolincopy.exe");
                 }
                 catch
                 {
-                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "复制档案.exe");
+                    return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "kinolincopy.exe");
                 }
             }
         }
@@ -50,19 +51,16 @@ namespace ClipboardAtlas
                 using (var key = Registry.CurrentUser.OpenSubKey(RunKey, true) ?? Registry.CurrentUser.CreateSubKey(RunKey))
                 {
                     if (key == null) return;
+                    foreach (var legacy in LegacyValueNames)
+                        key.DeleteValue(legacy, false);
                     if (enabled) key.SetValue(ValueName, "\"" + ExePath + "\"");
                     else key.DeleteValue(ValueName, false);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法更新开机自启设置：\n" + ex.Message, "复制档案", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show("无法更新开机自启设置：\n" + ex.Message, "kinolincopy", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
-        }
-
-        public static void EnsureDefaultEnabled()
-        {
-            if (!IsEnabled()) SetEnabled(true);
         }
     }
 }

@@ -1,4 +1,4 @@
-# 复制档案 Clipboard Atlas
+# kinolincopy
 
 一个本机 Windows 剪贴板历史看板。使用 WPF 和系统自带的 .NET Framework 4.8，单文件体积很小，不附带 Chromium。
 
@@ -28,4 +28,4 @@ dotnet run -c Debug
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-产物在 `release/复制档案.exe`。
+产物在 `release/kinolincopy.exe`。

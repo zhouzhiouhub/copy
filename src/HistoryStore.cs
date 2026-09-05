@@ -22,11 +22,38 @@ namespace ClipboardAtlas
 
         public HistoryStore()
         {
-            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "clipboard-atlas");
+            var root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "kinolincopy");
             Directory.CreateDirectory(root);
+            MigrateLegacyData(root);
             imageDir = Path.Combine(root, "images");
             Directory.CreateDirectory(imageDir);
             filePath = Path.Combine(root, "clipboard-history.json");
+        }
+
+        static void MigrateLegacyData(string root)
+        {
+            try
+            {
+                var legacy = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "clipboard-atlas");
+                if (!Directory.Exists(legacy)) return;
+                var legacyHistory = Path.Combine(legacy, "clipboard-history.json");
+                var targetHistory = Path.Combine(root, "clipboard-history.json");
+                if (File.Exists(legacyHistory) && !File.Exists(targetHistory))
+                    File.Copy(legacyHistory, targetHistory);
+                var legacyImages = Path.Combine(legacy, "images");
+                var targetImages = Path.Combine(root, "images");
+                if (!Directory.Exists(legacyImages)) return;
+                Directory.CreateDirectory(targetImages);
+                foreach (var file in Directory.GetFiles(legacyImages))
+                {
+                    var dest = Path.Combine(targetImages, Path.GetFileName(file));
+                    if (!File.Exists(dest)) File.Copy(file, dest);
+                }
+            }
+            catch
+            {
+                // Legacy migration is best-effort.
+            }
         }
 
         public string ImageDirectory => imageDir;
