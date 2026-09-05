@@ -1,24 +1,18 @@
-# Dependencies
+bin/
+obj/
+release/
+release*/
 node_modules/
-
-# Build output
 dist/
 out/
-release/
-
-# Electron local data
 *.log
 *.local
-
-# Runtime and user data
+*.user
+*.suo
 *.json.bak
 clipboard-history.json
-
-# Editor and OS files
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 .DS_Store
 Thumbs.db
-release-final/
-release*

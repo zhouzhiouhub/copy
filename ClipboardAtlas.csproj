@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>复制档案</AssemblyName>
+    <RootNamespace>ClipboardAtlas</RootNamespace>
+    <Product>复制档案</Product>
+    <Description>本机 Windows 剪贴板历史看板</Description>
+    <Version>1.0.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>assets\app.ico</ApplicationIcon>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <Prefer32Bit>false</Prefer32Bit>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+  </PropertyGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="src\App.xaml" />
+    <Page Remove="src\App.xaml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Runtime.Serialization" />
+  </ItemGroup>
+  <Target Name="RemoveGeneratedAppConfig" AfterTargets="Build;Publish">
+    <Delete Files="$(TargetPath).config" Condition="Exists('$(TargetPath).config')" />
+    <Delete Files="$(PublishDir)$(TargetFileName).config" Condition="'$(PublishDir)' != '' and Exists('$(PublishDir)$(TargetFileName).config')" />
+  </Target>
+</Project>
