@@ -7,7 +7,7 @@
         Height="580"
         MinWidth="280"
         MaxWidth="280"
-        MinHeight="580"
+        MinHeight="290"
         MaxHeight="580"
         WindowStyle="None"
         ResizeMode="NoResize"

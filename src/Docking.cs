@@ -9,8 +9,9 @@ namespace ClipboardAtlas
     {
         public const double PanelWidth = 280;
         public const double PanelHeight = 580;
-        public const double EdgePeek = 6;
-        public const double EdgeHit = 12;
+        public const double EdgePeek = 3;
+        public const double EdgePeekHeight = PanelHeight / 2;
+        public const double EdgeHit = 10;
         public const int CollapseDelay = 160;
         public const int ExpandSuppressAfterCopy = 1400;
 
@@ -134,7 +135,7 @@ namespace ClipboardAtlas
             applying = true;
             var dock = store.Dock;
             var monitor = CurrentMonitor(dock.Expanded);
-            var size = PanelSize(monitor);
+            var size = PanelSize(monitor, dock.Expanded);
             var y = DockY(monitor, size.Height);
             var shownX = dock.Side == "left" ? monitor.WorkX : monitor.WorkX + monitor.WorkWidth - size.Width;
             var hiddenX = dock.Side == "left" ? monitor.WorkX - size.Width + EdgePeek : monitor.WorkX + monitor.WorkWidth - EdgePeek;
@@ -154,11 +155,12 @@ namespace ClipboardAtlas
             return NativeMethods.MonitorFromCursor();
         }
 
-        static Size PanelSize(MonitorArea monitor)
+        static Size PanelSize(MonitorArea monitor, bool expanded = true)
         {
+            var targetHeight = expanded ? PanelHeight : EdgePeekHeight;
             return new Size(
                 Math.Round(Clamp(PanelWidth, EdgePeek, Math.Max(EdgePeek, monitor.WorkWidth - EdgePeek))),
-                Math.Round(Clamp(PanelHeight, 1, Math.Max(1, monitor.WorkHeight)))
+                Math.Round(Clamp(targetHeight, 1, Math.Max(1, monitor.WorkHeight)))
             );
         }
 
@@ -205,7 +207,7 @@ namespace ClipboardAtlas
 
         string CursorEdge(Point dip, MonitorArea monitor)
         {
-            var height = PanelSize(monitor).Height;
+            var height = PanelSize(monitor, false).Height;
             var triggerY = DockY(monitor, height);
             if (dip.Y < triggerY || dip.Y > triggerY + height) return null;
             if (dip.X <= monitor.BoundsX + EdgeHit) return "left";
