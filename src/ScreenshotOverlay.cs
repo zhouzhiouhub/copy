@@ -246,10 +246,10 @@ namespace ClipboardAtlas
 
             tools = new[]
             {
-                MakeToolButton("\uEA86", ShotTool.Rect, "矩形"),
-                MakeToolButton("\uEA3B", ShotTool.Ellipse, "椭圆"),
-                MakeToolButton("\uE72A", ShotTool.Arrow, "箭头"),
-                MakeToolButton("\uE70F", ShotTool.Pen, "画笔")
+                MakeToolButton(MaterialIcons.CropSquare, ShotTool.Rect, "矩形"),
+                MakeToolButton(MaterialIcons.Circle, ShotTool.Ellipse, "椭圆"),
+                MakeToolButton(MaterialIcons.NorthEast, ShotTool.Arrow, "箭头"),
+                MakeToolButton(MaterialIcons.Edit, ShotTool.Pen, "画笔")
             };
             foreach (var button in tools) panel.Children.Add(button);
 
@@ -295,9 +295,9 @@ namespace ClipboardAtlas
             }
 
             panel.Children.Add(MakeSeparator());
-            panel.Children.Add(MakeActionButton("\uE7A7", "撤销", UndoStroke, false));
-            panel.Children.Add(MakeActionButton("\uE711", "取消", Cancel, false));
-            panel.Children.Add(MakeActionButton("\uE73E", "完成", Confirm, true));
+            panel.Children.Add(MakeActionButton(MaterialIcons.Undo, "撤销", UndoStroke, false));
+            panel.Children.Add(MakeActionButton(MaterialIcons.Close, "取消", Cancel, false));
+            panel.Children.Add(MakeActionButton(MaterialIcons.Check, "完成", Confirm, true));
 
             return new Border
             {
@@ -317,20 +317,12 @@ namespace ClipboardAtlas
             };
         }
 
-        static readonly System.Windows.Media.FontFamily IconFont = new System.Windows.Media.FontFamily("Segoe MDL2 Assets");
-
-        ToggleButton MakeToolButton(string glyph, ShotTool value, string tip)
+        ToggleButton MakeToolButton(string pathData, ShotTool value, string tip)
         {
+            var ink = new SolidColorBrush(MediaColor.FromRgb(0x18, 0x22, 0x1F));
             var button = new ToggleButton
             {
-                Content = new TextBlock
-                {
-                    Text = glyph,
-                    FontFamily = IconFont,
-                    FontSize = 14,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                },
+                Content = MaterialIcons.Create(pathData, ink),
                 Width = 30,
                 Height = 28,
                 Margin = new Thickness(2, 0, 2, 0),
@@ -362,22 +354,14 @@ namespace ClipboardAtlas
             return button;
         }
 
-        Button MakeActionButton(string glyph, string tip, Action action, bool primary)
+        Button MakeActionButton(string pathData, string tip, Action action, bool primary)
         {
             var foreground = primary
                 ? new SolidColorBrush(MediaColor.FromRgb(0xFF, 0xF9, 0xE8))
                 : new SolidColorBrush(MediaColor.FromRgb(0x18, 0x22, 0x1F));
             var button = new Button
             {
-                Content = new TextBlock
-                {
-                    Text = glyph,
-                    FontFamily = IconFont,
-                    FontSize = 14,
-                    Foreground = foreground,
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center
-                },
+                Content = MaterialIcons.Create(pathData, foreground),
                 Width = 30,
                 Height = 28,
                 Margin = new Thickness(2, 0, 2, 0),
