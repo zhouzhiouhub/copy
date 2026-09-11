@@ -246,10 +246,10 @@ namespace ClipboardAtlas
 
             tools = new[]
             {
-                MakeToolButton("□", ShotTool.Rect, "矩形"),
-                MakeToolButton("○", ShotTool.Ellipse, "椭圆"),
-                MakeToolButton("↗", ShotTool.Arrow, "箭头"),
-                MakeToolButton("✎", ShotTool.Pen, "画笔")
+                MakeToolButton("\uEA86", ShotTool.Rect, "矩形"),
+                MakeToolButton("\uEA3B", ShotTool.Ellipse, "椭圆"),
+                MakeToolButton("\uE72A", ShotTool.Arrow, "箭头"),
+                MakeToolButton("\uE70F", ShotTool.Pen, "画笔")
             };
             foreach (var button in tools) panel.Children.Add(button);
 
@@ -287,14 +287,17 @@ namespace ClipboardAtlas
                     RefreshColorDots();
                     e.Handled = true;
                 };
+                ToolTipService.SetToolTip(dot, ColorTip(color));
+                ToolTipService.SetInitialShowDelay(dot, 200);
+                ToolTipService.SetShowDuration(dot, 4000);
                 colors[i] = dot;
                 panel.Children.Add(dot);
             }
 
             panel.Children.Add(MakeSeparator());
-            panel.Children.Add(MakeActionButton("撤销", UndoStroke, false));
-            panel.Children.Add(MakeActionButton("取消", Cancel, false));
-            panel.Children.Add(MakeActionButton("完成", Confirm, true));
+            panel.Children.Add(MakeActionButton("\uE7A7", "撤销", UndoStroke, false));
+            panel.Children.Add(MakeActionButton("\uE711", "取消", Cancel, false));
+            panel.Children.Add(MakeActionButton("\uE73E", "完成", Confirm, true));
 
             return new Border
             {
@@ -314,11 +317,20 @@ namespace ClipboardAtlas
             };
         }
 
+        static readonly System.Windows.Media.FontFamily IconFont = new System.Windows.Media.FontFamily("Segoe MDL2 Assets");
+
         ToggleButton MakeToolButton(string glyph, ShotTool value, string tip)
         {
             var button = new ToggleButton
             {
-                Content = glyph,
+                Content = new TextBlock
+                {
+                    Text = glyph,
+                    FontFamily = IconFont,
+                    FontSize = 14,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
                 Width = 30,
                 Height = 28,
                 Margin = new Thickness(2, 0, 2, 0),
@@ -326,9 +338,10 @@ namespace ClipboardAtlas
                 Tag = value,
                 Cursor = Cursors.Hand,
                 Background = MediaBrushes.Transparent,
-                BorderThickness = new Thickness(0),
-                FontSize = 14
+                BorderThickness = new Thickness(0)
             };
+            ToolTipService.SetInitialShowDelay(button, 200);
+            ToolTipService.SetShowDuration(button, 4000);
             button.Checked += (_, __) =>
             {
                 foreach (var other in toolButtons)
@@ -349,31 +362,52 @@ namespace ClipboardAtlas
             return button;
         }
 
-        Button MakeActionButton(string text, Action action, bool primary)
+        Button MakeActionButton(string glyph, string tip, Action action, bool primary)
         {
+            var foreground = primary
+                ? new SolidColorBrush(MediaColor.FromRgb(0xFF, 0xF9, 0xE8))
+                : new SolidColorBrush(MediaColor.FromRgb(0x18, 0x22, 0x1F));
             var button = new Button
             {
-                Content = text,
+                Content = new TextBlock
+                {
+                    Text = glyph,
+                    FontFamily = IconFont,
+                    FontSize = 14,
+                    Foreground = foreground,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    VerticalAlignment = VerticalAlignment.Center
+                },
+                Width = 30,
                 Height = 28,
-                MinWidth = 44,
-                Margin = new Thickness(4, 0, 0, 0),
-                Padding = new Thickness(10, 0, 10, 0),
+                Margin = new Thickness(2, 0, 2, 0),
+                Padding = new Thickness(0),
+                ToolTip = tip,
                 Cursor = Cursors.Hand,
                 BorderThickness = new Thickness(0),
                 Background = primary
                     ? new SolidColorBrush(MediaColor.FromRgb(0x23, 0x33, 0x2D))
-                    : new SolidColorBrush(MediaColor.FromRgb(0xED, 0xF1, 0xEB)),
-                Foreground = primary
-                    ? new SolidColorBrush(MediaColor.FromRgb(0xFF, 0xF9, 0xE8))
-                    : new SolidColorBrush(MediaColor.FromRgb(0x18, 0x22, 0x1F)),
-                FontSize = 12
+                    : MediaBrushes.Transparent,
+                Foreground = foreground
             };
+            ToolTipService.SetInitialShowDelay(button, 200);
+            ToolTipService.SetShowDuration(button, 4000);
             button.Click += (_, e) =>
             {
                 action();
                 e.Handled = true;
             };
             return button;
+        }
+
+        static string ColorTip(MediaColor color)
+        {
+            if (color.R == 0xE8 && color.G == 0x4A) return "红色";
+            if (color.R == 0xF5 && color.G == 0xC5) return "黄色";
+            if (color.R == 0x3D && color.G == 0xC4) return "绿色";
+            if (color.R == 0x4C && color.G == 0xC2) return "蓝色";
+            if (color.R == 0xFF && color.G == 0xFF) return "白色";
+            return "黑色";
         }
 
         static Border MakeSeparator()
