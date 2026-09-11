@@ -116,6 +116,78 @@
         </Setter.Value>
       </Setter>
     </Style>
+
+    <Style x:Key="ThinScrollBarThumb" TargetType="Thumb">
+      <Setter Property="OverridesDefaultStyle" Value="True"/>
+      <Setter Property="IsTabStop" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Thumb">
+            <Border x:Name="pill" Background="#B7C2BB" CornerRadius="2" Margin="0,1"/>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="pill" Property="Background" Value="#8F9C95"/>
+              </Trigger>
+              <Trigger Property="IsDragging" Value="True">
+                <Setter TargetName="pill" Property="Background" Value="#6F7C75"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+      <Setter Property="OverridesDefaultStyle" Value="True"/>
+      <Setter Property="Width" Value="3"/>
+      <Setter Property="MinWidth" Value="3"/>
+      <Setter Property="Background" Value="Transparent"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ScrollBar">
+            <Grid Background="Transparent">
+              <Track x:Name="PART_Track" IsDirectionReversed="True" Focusable="False">
+                <Track.DecreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageUpCommand" Opacity="0" IsTabStop="False"/>
+                </Track.DecreaseRepeatButton>
+                <Track.Thumb>
+                  <Thumb Style="{StaticResource ThinScrollBarThumb}"/>
+                </Track.Thumb>
+                <Track.IncreaseRepeatButton>
+                  <RepeatButton Command="ScrollBar.PageDownCommand" Opacity="0" IsTabStop="False"/>
+                </Track.IncreaseRepeatButton>
+              </Track>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+      <Style.Triggers>
+        <Trigger Property="Orientation" Value="Horizontal">
+          <Setter Property="Width" Value="Auto"/>
+          <Setter Property="Height" Value="3"/>
+          <Setter Property="MinHeight" Value="3"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="ScrollBar">
+                <Grid Background="Transparent">
+                  <Track x:Name="PART_Track" Focusable="False">
+                    <Track.DecreaseRepeatButton>
+                      <RepeatButton Command="ScrollBar.PageLeftCommand" Opacity="0" IsTabStop="False"/>
+                    </Track.DecreaseRepeatButton>
+                    <Track.Thumb>
+                      <Thumb Style="{StaticResource ThinScrollBarThumb}"/>
+                    </Track.Thumb>
+                    <Track.IncreaseRepeatButton>
+                      <RepeatButton Command="ScrollBar.PageRightCommand" Opacity="0" IsTabStop="False"/>
+                    </Track.IncreaseRepeatButton>
+                  </Track>
+                </Grid>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Trigger>
+      </Style.Triggers>
+    </Style>
   </Window.Resources>
 
   <Border x:Name="Shell" Background="#F7F8F5">
