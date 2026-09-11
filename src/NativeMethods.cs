@@ -12,11 +12,13 @@ namespace ClipboardAtlas
         public const int WsExLayered = 0x00080000;
         public const int SwRestore = 9;
         public const int WmClipboardUpdate = 0x031D;
+        public const int WmHotkey = 0x0312;
         public const uint KeyeventfKeyup = 2;
         public const byte VkControl = 0x11;
         public const byte VkV = 0x56;
         public const uint MonitorDefaultToNearest = 2;
         public const int MdtdEffectiveDpi = 0;
+        public const int ScreenshotHotkeyId = 0x4B01;
         public static readonly IntPtr HwndTopmost = new IntPtr(-1);
 
         [StructLayout(LayoutKind.Sequential)]
@@ -63,6 +65,12 @@ namespace ClipboardAtlas
 
         [DllImport("user32.dll")]
         public static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool RegisterHotKey(IntPtr hwnd, int id, uint modifiers, uint virtualKey);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        public static extern bool UnregisterHotKey(IntPtr hwnd, int id);
 
         [DllImport("user32.dll")]
         public static extern uint GetClipboardSequenceNumber();

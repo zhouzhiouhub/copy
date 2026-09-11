@@ -11,6 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
 namespace ClipboardAtlas
@@ -29,6 +30,10 @@ namespace ClipboardAtlas
         bool privacyLocked;
         bool settingsOpen;
         bool quitting;
+        bool hotkeyRegistered;
+        bool capturingHotkey;
+        bool screenshotBusy;
+        string screenshotHotkeyError = "";
         uint lastSequence;
         ClipEntry copiedEntry;
         HwndSource hookSource;
@@ -57,7 +62,8 @@ namespace ClipboardAtlas
                 copiedEntry = null;
             };
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-            tray = new TrayService(ActivateFromExternal, OpenSettings, RequestQuit);
+            tray = new TrayService(ActivateFromExternal, OpenSettings, StartScreenshot, RequestQuit);
+            SyncScreenshotUi();
         }
 
         public ObservableCollection<ClipEntry> VisibleEntries => visible;
@@ -105,6 +111,35 @@ namespace ClipboardAtlas
             }
         }
 
+        public bool ScreenshotEnabled
+        {
+            get => store.Settings.ScreenshotEnabled;
+            set
+            {
+                if (store.Settings.ScreenshotEnabled == value) return;
+                store.Settings.ScreenshotEnabled = value;
+                store.Save();
+                ApplyHotkey();
+                SyncScreenshotUi();
+                Raise();
+            }
+        }
+
+        public string ScreenshotHotkeyText
+        {
+            get
+            {
+                if (capturingHotkey) return "按下新的快捷键…";
+                return HotkeySpec.Format(store.Settings.ScreenshotModifiers, store.Settings.ScreenshotKey);
+            }
+        }
+
+        public bool ScreenshotHotkeyIsCustom =>
+            !HotkeySpec.IsDefault(store.Settings.ScreenshotModifiers, store.Settings.ScreenshotKey);
+
+        public string ScreenshotHotkeyStatus => screenshotHotkeyError ?? "";
+        public bool ScreenshotHotkeyHasError => !string.IsNullOrWhiteSpace(screenshotHotkeyError);
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         public void ActivateFromExternal()
@@ -127,7 +162,8 @@ namespace ClipboardAtlas
                 if (store.Settings.AutoStart) Autostart.SetEnabled(true);
                 else if (Autostart.IsEnabled()) Autostart.SetEnabled(false);
             }
-            RaiseAll(nameof(AutoStart), nameof(ShowInTaskbarSetting));
+            RaiseAll(nameof(AutoStart), nameof(ShowInTaskbarSetting), nameof(ScreenshotEnabled));
+            SyncScreenshotUi();
         }
 
         void OnDisplaySettingsChanged(object sender, EventArgs e)
@@ -147,6 +183,7 @@ namespace ClipboardAtlas
             pollTimer.Start();
             pruneTimer.Start();
             clipboard.Capture(false);
+            ApplyHotkey();
         }
 
         protected override void OnDeactivated(EventArgs e)
@@ -178,6 +215,7 @@ namespace ClipboardAtlas
             tray = null;
             if (hookSource != null)
             {
+                UnregisterHotkey();
                 hookSource.RemoveHook(WndProc);
                 NativeMethods.RemoveClipboardFormatListener(hookSource.Handle);
             }
@@ -187,6 +225,12 @@ namespace ClipboardAtlas
 
         IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
         {
+            if (msg == NativeMethods.WmHotkey && wParam.ToInt32() == NativeMethods.ScreenshotHotkeyId)
+            {
+                handled = true;
+                Dispatcher.BeginInvoke(new Action(StartScreenshot));
+                return IntPtr.Zero;
+            }
             if (msg == NativeMethods.WmClipboardUpdate)
             {
                 lastSequence = NativeMethods.GetClipboardSequenceNumber();
@@ -272,17 +316,181 @@ namespace ClipboardAtlas
 
         void CloseSettings(object sender, RoutedEventArgs e)
         {
+            capturingHotkey = false;
             SettingsOpen = false;
+            SyncScreenshotUi();
         }
 
         void CloseSettingsBackdrop(object sender, MouseButtonEventArgs e)
         {
-            if (e.OriginalSource == sender) SettingsOpen = false;
+            if (e.OriginalSource == sender)
+            {
+                capturingHotkey = false;
+                SettingsOpen = false;
+                SyncScreenshotUi();
+            }
         }
 
         void SettingsCardClick(object sender, MouseButtonEventArgs e)
         {
             e.Handled = true;
+        }
+
+        void BeginHotkeyCapture(object sender, MouseButtonEventArgs e)
+        {
+            if (!ScreenshotEnabled) return;
+            capturingHotkey = true;
+            screenshotHotkeyError = "";
+            SyncScreenshotUi();
+            e.Handled = true;
+        }
+
+        void ResetScreenshotHotkey(object sender, RoutedEventArgs e)
+        {
+            capturingHotkey = false;
+            store.Settings.ScreenshotModifiers = HotkeySpec.DefaultModifiers;
+            store.Settings.ScreenshotKey = HotkeySpec.DefaultKey;
+            store.Save();
+            ApplyHotkey();
+            SyncScreenshotUi();
+        }
+
+        protected override void OnPreviewKeyDown(KeyEventArgs e)
+        {
+            if (capturingHotkey)
+            {
+                if (e.Key == Key.Escape || e.SystemKey == Key.Escape)
+                {
+                    capturingHotkey = false;
+                    SyncScreenshotUi();
+                    e.Handled = true;
+                    return;
+                }
+
+                if (HotkeySpec.TryFromKeyEvent(e, out var modifiers, out var virtualKey))
+                {
+                    capturingHotkey = false;
+                    store.Settings.ScreenshotModifiers = modifiers;
+                    store.Settings.ScreenshotKey = virtualKey;
+                    store.Save();
+                    ApplyHotkey();
+                    SyncScreenshotUi();
+                    e.Handled = true;
+                    return;
+                }
+
+                e.Handled = true;
+                return;
+            }
+
+            base.OnPreviewKeyDown(e);
+        }
+
+        void ApplyHotkey()
+        {
+            UnregisterHotkey();
+            screenshotHotkeyError = "";
+            if (!store.Settings.ScreenshotEnabled || quitting)
+            {
+                SyncScreenshotUi();
+                return;
+            }
+
+            var hwnd = NativeMethods.HandleOf(this);
+            if (hwnd == IntPtr.Zero)
+            {
+                screenshotHotkeyError = "窗口尚未就绪，稍后重试注册快捷键。";
+                SyncScreenshotUi();
+                return;
+            }
+
+            var modifiers = (uint)(store.Settings.ScreenshotModifiers | HotkeySpec.ModNorepeat);
+            var key = (uint)store.Settings.ScreenshotKey;
+            if (key == 0)
+            {
+                screenshotHotkeyError = "快捷键无效。";
+                SyncScreenshotUi();
+                return;
+            }
+
+            hotkeyRegistered = NativeMethods.RegisterHotKey(hwnd, NativeMethods.ScreenshotHotkeyId, modifiers, key);
+            if (!hotkeyRegistered)
+                screenshotHotkeyError = "快捷键注册失败，可能与微信或其他程序冲突，请更换组合键。";
+            SyncScreenshotUi();
+        }
+
+        void UnregisterHotkey()
+        {
+            if (!hotkeyRegistered) return;
+            var hwnd = NativeMethods.HandleOf(this);
+            if (hwnd != IntPtr.Zero)
+                NativeMethods.UnregisterHotKey(hwnd, NativeMethods.ScreenshotHotkeyId);
+            hotkeyRegistered = false;
+        }
+
+        void SyncScreenshotUi()
+        {
+            tray?.SetScreenshotShortcut(
+                store.Settings.ScreenshotEnabled
+                    ? HotkeySpec.Format(store.Settings.ScreenshotModifiers, store.Settings.ScreenshotKey)
+                    : "");
+            RaiseAll(
+                nameof(ScreenshotEnabled),
+                nameof(ScreenshotHotkeyText),
+                nameof(ScreenshotHotkeyIsCustom),
+                nameof(ScreenshotHotkeyStatus),
+                nameof(ScreenshotHotkeyHasError));
+        }
+
+        void StartScreenshot()
+        {
+            if (quitting || screenshotBusy) return;
+            screenshotBusy = true;
+            try
+            {
+                capturingHotkey = false;
+                SettingsOpen = false;
+                dock.SetExpanded(false, true);
+                RaiseDock();
+
+                // Let the panel collapse before capturing the desktop.
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    try
+                    {
+                        var image = ScreenshotOverlay.CaptureRegion();
+                        if (image == null) return;
+                        WriteScreenshot(image);
+                    }
+                    finally
+                    {
+                        screenshotBusy = false;
+                    }
+                }), DispatcherPriority.ApplicationIdle);
+            }
+            catch
+            {
+                screenshotBusy = false;
+            }
+        }
+
+        void WriteScreenshot(BitmapSource image)
+        {
+            if (image == null) return;
+            for (var i = 0; i < 6; i++)
+            {
+                try
+                {
+                    Clipboard.SetImage(image);
+                    lastSequence = NativeMethods.GetClipboardSequenceNumber();
+                    clipboard.Capture(true);
+                    return;
+                }
+                catch
+                {
+                    System.Threading.Thread.Sleep(40);
+                }
+            }
         }
 
         void Collapse(object sender, RoutedEventArgs e)
@@ -300,7 +508,9 @@ namespace ClipboardAtlas
         void RequestQuit()
         {
             quitting = true;
+            capturingHotkey = false;
             SettingsOpen = false;
+            UnregisterHotkey();
             tray?.Dispose();
             tray = null;
             dock.Stop();

@@ -521,6 +521,27 @@
               </DockPanel>
             </Border>
 
+            <Border Background="#F7F8F5" CornerRadius="8" Padding="10,8" Margin="0,0,0,8">
+              <StackPanel>
+                <DockPanel>
+                  <StackPanel>
+                    <TextBlock Text="截图快捷键" FontSize="12" Foreground="#18221F"/>
+                    <TextBlock Text="默认与微信一致 Alt+A" FontSize="10" Foreground="#8A968F" Margin="0,2,0,0"/>
+                  </StackPanel>
+                  <CheckBox IsChecked="{Binding ScreenshotEnabled, Mode=TwoWay}" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right"/>
+                </DockPanel>
+                <DockPanel Margin="0,8,0,0" Visibility="{Binding ScreenshotEnabled, Converter={StaticResource Vis}}">
+                  <Border Background="White" BorderBrush="#DCE2DB" BorderThickness="1" CornerRadius="6" Padding="8,5" Cursor="Hand" MouseLeftButtonDown="BeginHotkeyCapture" ToolTip="点击后按下新的快捷键组合">
+                    <TextBlock FontSize="11" Foreground="#18221F" Text="{Binding ScreenshotHotkeyText}"/>
+                  </Border>
+                  <Button Style="{StaticResource IconButton}" Width="Auto" Padding="6,0" Margin="6,0,0,0" DockPanel.Dock="Right" HorizontalAlignment="Right" ToolTip="恢复为微信默认 Alt+A" Click="ResetScreenshotHotkey" Visibility="{Binding ScreenshotHotkeyIsCustom, Converter={StaticResource Vis}}">
+                    <TextBlock Text="重置" FontSize="11" Foreground="#65736C"/>
+                  </Button>
+                </DockPanel>
+                <TextBlock Text="{Binding ScreenshotHotkeyStatus}" FontSize="10" Foreground="#A45134" Margin="0,6,0,0" TextWrapping="Wrap" Visibility="{Binding ScreenshotHotkeyHasError, Converter={StaticResource Vis}}"/>
+              </StackPanel>
+            </Border>
+
             <DockPanel Margin="2,2,2,10">
               <TextBlock Text="版本" FontSize="11" Foreground="#8A968F" VerticalAlignment="Center"/>
               <TextBlock Text="{Binding VersionText}" FontSize="11" Foreground="#65736C" VerticalAlignment="Center" DockPanel.Dock="Right" HorizontalAlignment="Right"/>

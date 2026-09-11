@@ -32,6 +32,18 @@ namespace ClipboardAtlas
 
         [DataMember(Name = "showInTaskbar")]
         public bool ShowInTaskbar { get; set; }
+
+        /// <summary>截图快捷键开关；默认开启，快捷键与微信一致（Alt+A）。</summary>
+        [DataMember(Name = "screenshotEnabled")]
+        public bool ScreenshotEnabled { get; set; } = true;
+
+        /// <summary>RegisterHotKey modifiers；默认 MOD_ALT。</summary>
+        [DataMember(Name = "screenshotModifiers")]
+        public int ScreenshotModifiers { get; set; } = HotkeySpec.ModAlt;
+
+        /// <summary>RegisterHotKey virtual-key；默认 A。</summary>
+        [DataMember(Name = "screenshotKey")]
+        public int ScreenshotKey { get; set; } = HotkeySpec.VkA;
     }
 
     [DataContract]

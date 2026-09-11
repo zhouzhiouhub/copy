@@ -11,16 +11,21 @@ namespace ClipboardAtlas
         readonly NotifyIcon notify;
         readonly Action showPanel;
         readonly Action openSettings;
+        readonly Action startScreenshot;
         readonly Action quit;
+        readonly ToolStripMenuItem screenshotItem;
 
-        public TrayService(Action showPanel, Action openSettings, Action quit)
+        public TrayService(Action showPanel, Action openSettings, Action startScreenshot, Action quit)
         {
             this.showPanel = showPanel;
             this.openSettings = openSettings;
+            this.startScreenshot = startScreenshot;
             this.quit = quit;
 
             var menu = new ContextMenuStrip();
             menu.Items.Add("显示面板", null, (_, __) => this.showPanel?.Invoke());
+            screenshotItem = new ToolStripMenuItem("截图", null, (_, __) => this.startScreenshot?.Invoke());
+            menu.Items.Add(screenshotItem);
             menu.Items.Add("设置", null, (_, __) => this.openSettings?.Invoke());
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add("退出", null, (_, __) => this.quit?.Invoke());
@@ -63,6 +68,12 @@ namespace ClipboardAtlas
             }
 
             return SystemIcons.Application;
+        }
+
+        public void SetScreenshotShortcut(string shortcut)
+        {
+            var label = string.IsNullOrWhiteSpace(shortcut) ? "截图" : "截图 (" + shortcut + ")";
+            if (screenshotItem != null) screenshotItem.Text = label;
         }
 
         public void Dispose()
