@@ -131,7 +131,7 @@ namespace ClipboardAtlas
 
             hintLabel = new TextBlock
             {
-                Text = "拖动选择区域 · 松手后可编辑标注 · Esc 取消",
+                Text = "拖动选择区域 · 松手后可编辑 · 双击或点完成确认 · Esc 取消",
                 Foreground = MediaBrushes.White,
                 FontSize = 14,
                 HorizontalAlignment = HorizontalAlignment.Center,
@@ -522,6 +522,21 @@ namespace ClipboardAtlas
                 hintLabel.Visibility = Visibility.Collapsed;
                 ApplySelection(new Rect(pos, new Size(0, 0)));
                 e.Handled = true;
+                return;
+            }
+
+            // Double-click inside the selection finishes the screenshot.
+            if (e.ClickCount >= 2 && selection.Contains(pos))
+            {
+                if (IsMouseCaptured) ReleaseMouseCapture();
+                creatingSelection = false;
+                dragStart = null;
+                resizeMode = null;
+                drawStart = null;
+                draftShape = null;
+                draftPen = null;
+                e.Handled = true;
+                Confirm();
                 return;
             }
 
